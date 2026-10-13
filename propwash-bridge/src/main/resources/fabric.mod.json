@@ -3,17 +3,13 @@
 	"id": "propwash-bridge",
 	"version": "${version}",
 	"name": "Propwash Bridge",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"description": "Server-side bridge that sends server status, race results and records from Propwash to the Discord bot.",
 	"authors": [
-		"Me!"
+		"Itsj5j6j7"
 	],
-	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
-	},
 	"license": "CC0-1.0",
 	"icon": "assets/propwash-bridge/icon.png",
-	"environment": "*",
+	"environment": "server",
 	"entrypoints": {
 		"main": [
 			"dev.j4v1.propwashbridge.PropwashBridge"
@@ -27,5 +23,8 @@
 		"minecraft": "~26.3",
 		"java": ">=25",
 		"fabric-api": "*"
+	},
+	"breaks": {
+		"propwash": "<0.5.0"
 	}
 }

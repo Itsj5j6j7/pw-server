@@ -18,6 +18,9 @@ dependencies {
 
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	// Propwash isn't on any maven: drop its Fabric jar into libs/ (gitignored, PolyForm Shield).
+	compileOnly fileTree("libs") { include "*.jar" }
 }
 
 processResources {

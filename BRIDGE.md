@@ -4,7 +4,7 @@ This document covers what the server-side mod needs to collect data from Minecra
 
 **Summary:** the mod only **sends**; the bot never calls the mod. The mod does three things: a heartbeat every 30 s, a queue of events (start, stop, laps, races), and the in-game `/link` command.
 
-**One mod, several servers.** The network runs Velocity in front of a Paper hub and two or three backend servers with Propwash: `fpv`, `plots` and, later, an `smp`. The **same `.jar`** goes on every backend with Propwash, each one with **its own API key**. The key is what tells the bot which server is talking. If the bridge ends up on a single server, it uses one key and nothing else changes.
+**One mod, several servers.** The network runs Velocity in front of a Paper hub and two or three Fabric backend servers with Propwash: `fpv`, `plots` and, later, an `smp`. The **same `.jar`** goes on every backend with Propwash, each one with **its own API key**. The key is what tells the bot which server is talking. If the bridge ends up on a single server, it uses one key and nothing else changes.
 
 ---
 
@@ -132,7 +132,7 @@ Every error response has this shape:
 
 ```json
 {
-  "mcVersion": "26.3", "loader": "fabric", "loaderVersion": "0.17.2", "modVersion": "0.1.0",
+  "mcVersion": "26.3", "loader": "fabric", "loaderVersion": "0.19.5", "modVersion": "0.1.0",
   "propwashVersion": "0.5.0",
   "onlinePlayers": 3, "maxPlayers": 20,
   "players": [
@@ -147,7 +147,7 @@ Every error response has this shape:
 |---|---|---|---|
 | `onlinePlayers`, `maxPlayers` | integer ≥ 0 | yes | Players on **this** server only |
 | `players` | array (max 1000) | yes | `{ uuid, name, dimension }`. Empty if nobody is online |
-| `mcVersion`, `loader`, `loaderVersion`, `modVersion`, `propwashVersion` | string | no | `loader`: `fabric` or `neoforge` |
+| `mcVersion`, `loader`, `loaderVersion`, `modVersion`, `propwashVersion` | string | no | `loader`: always `fabric` |
 | `tps`, `mspt` | number ≥ 0 | no | `tps = min(20, 1000 / mspt)` |
 | `uptimeSeconds`, `memoryUsedMb`, `memoryMaxMb` | integer ≥ 0 | no | |
 
@@ -316,8 +316,8 @@ Deletes **this server's** course and all its leaderboards.
 | Where | Bridge? | Why |
 |---|---|---|
 | Velocity proxy | No | Only sees connections and server switches; no dimensions, no Propwash |
-| Hub (Paper) | No | Paper doesn't load Fabric/NeoForge mods, and the hub has no Propwash |
-| `fpv`, `plots`, `smp` (Fabric/NeoForge with Propwash) | **Yes** | Runs in the same JVM as Propwash: sees players, dimensions and races |
+| Hub (Paper) | No | Paper doesn't load Fabric mods, and the hub has no Propwash |
+| `fpv`, `plots`, `smp` (Fabric with Propwash) | **Yes** | Runs in the same JVM as Propwash: sees players, dimensions and races |
 
 - **Same `.jar` on every backend.** Only `apiKey` changes between servers. The mod must not hardcode anything server-specific (no server names, no course ids, no dimensions).
 - A server without courses (likely `plots`) just sends heartbeats, `server.started` and `server.stopping`; the race hooks simply never fire. No special mode needed.
@@ -325,11 +325,10 @@ Deletes **this server's** course and all its leaderboards.
 
 ### 5.2 Requirements
 
-- Mod for **Minecraft 26.3**, depending on `propwash >= 0.5.0`.
-- **Multi-loader from the start** (common module + `fabric` + `neoforge`, like Propwash itself). The current servers can run on one loader and the SMP on the other without duplicating code. If servers ever run different Minecraft versions, each version needs its own build.
-- **Server only**: `environment: server` on Fabric, `side = SERVER` on NeoForge. Players don't install it.
-- **To verify:** the bridge must not count as a Propwash add-on. Propwash compares the add-on list between server and client, and if the bridge counts, players without it can't join that backend. As long as it doesn't register parts or use the Propwash registry it shouldn't count, but this needs testing on each backend.
-- `PropwashApi.requireVersion("<mod_id>", "1.5")` to fail with a clear message if Propwash is too old.
+- Mod for **Minecraft 26.3** and **Fabric only** (Fabric Loader + Fabric API), like every backend. NeoForge is out of scope. If servers ever run different Minecraft versions, each version needs its own build.
+- **Server only**: `"environment": "server"` in `fabric.mod.json`. Players don't install it.
+- **Not a Propwash add-on.** Propwash lists as add-ons every mod with a positive dependency (`depends`, `recommends`, `suggests`) on `propwash` and compares that list with the client's. So the bridge declares no dependency on Propwash: it only has `"breaks": { "propwash": "<0.5.0" }` and checks at startup that Propwash is loaded. Players without the bridge join normally.
+- `PropwashApi.requireVersion("propwash-bridge", "1.5.0")` fails with a clear message if Propwash's API is too old.
 - Only **outgoing HTTPS**: no ports opened on any backend.
 
 ### 5.3 Velocity and UUIDs
@@ -337,7 +336,7 @@ Deletes **this server's** course and all its leaderboards.
 `/link` and the leaderboards rely on the UUID being the player's real one. Behind Velocity, the backends run with `online-mode=false` and trust the proxy, so:
 
 - `velocity.toml`: `online-mode = true` and `player-info-forwarding-mode = "modern"`.
-- Each Fabric backend needs a mod that accepts modern forwarding (e.g. FabricProxy-Lite); NeoForge needs its equivalent. If players already join through Velocity, it's probably there.
+- Each Fabric backend needs a mod that accepts modern forwarding (e.g. FabricProxy-Lite). If players already join through Velocity, it's probably there.
 - Backends must **not** be reachable from the internet, only from the proxy.
 - **Check:** on the first real heartbeat from each server, your UUID must match your Mojang UUID. If it doesn't, linking isn't trustworthy on that server.
 
@@ -350,7 +349,7 @@ Minecraft data, no Propwash needed:
 | Players, UUID and name | `server.getPlayerList().getPlayers()` |
 | Each player's dimension | `player.level().dimension().identifier()` |
 | TPS and MSPT | Server tick times |
-| Start and stop | Loader lifecycle events |
+| Start and stop | Fabric API `ServerLifecycleEvents` |
 
 Race data: the Propwash public API (1.5.0) **has no race events**. There are two options:
 
@@ -364,24 +363,23 @@ Race data: the Propwash public API (1.5.0) **has no race events**. There are two
 | `LEADERBOARD_RESET` | course, optional name | `leaderboard.reset` |
 | `COURSE_REMOVED` | id | `course.removed` |
 
-**B. Mixins on internal classes (fallback).** These hook points are from version 0.5.0 (commit `62cff4e`). **They're internal, so they can change in any release.** With several servers, option B forces **every server onto the same Propwash version**, or one build per version.
+**B. Mixins on internal classes (what the mod does today).** Verified against Propwash **0.5.1** (`propwash-fabric-26.3-0.5.1.jar`). **They're internal, so they can change in any release**: keep every server on the same Propwash version and check the hooks after each update. The mixin config is `required: false`, so a hook that no longer matches is logged as a Mixin error and the server still starts; only that event stops arriving.
 
-| What | Where | What it gives |
+| Event | Mixin | Hook |
 |---|---|---|
-| Lap that improves a time | `CourseRegistry#submitLap(Course, ServerPlayer, String frame, long lapNanos)`, on **return** | Returns `Leaderboard.Outcome`; the arguments give the rest |
-| Previous record | Same method, at the **head**: `registry.board(course).record(null)` and `.record(frame)` | `Optional<Entry>` with name and time |
-| Pilot finishes | `CourseRegistry#submitRace(Course, ServerPlayer, int laps, long totalNanos)` and `#submitAssistedRace(…, int assist)` | Course, player, time and whether it was assisted |
-| Place in the heat | `RaceLobby.Heat#finish(UUID)`, on return | The place (`> 0`) or `-1` |
-| Active heat | `RaceServer.heat(int courseId)` | The `Heat` or `null` |
-| Heat finished | `heat.done(System.nanoTime())` | `true` once everyone finished or dropped out, or after 15 min |
-| Leaderboard reset | `CourseRegistry#resetLeaderboard(Course, String playerName)` | Course and optional name |
+| `race.best_lap` | `CourseRegistryMixin` | `@WrapMethod` on `CourseRegistry#submitLap(Course, ServerPlayer, String frame, long lapNanos)`: reads `board(course).record(null)` and `.record(frame)` before, the `Leaderboard.Outcome` after. Only non-assisted laps go through it |
+| `race.result` (finish) | `RaceServerMixin` + `SessionAccessor` | `RaceServer#finish(...)` at the `GETSTATIC HEATS`, reached only by valid finishes, assisted or not. `assisted = (session.raceAssist \| session.lapAssist) != 0`. Hooking `submitRace`/`submitAssistedRace` would miss assisted finishes when the `SAVE_ASSISTED_LAPS` world rule is off |
+| `race.result` (heat start) | `RaceLobbyMixin` | `@WrapMethod` on `RaceLobby#start(long)`: pilots and names from the lobby (`members()` and `names()`, same order) before it's cleared |
+| `race.result` (place) | `HeatMixin` | `RaceLobby.Heat#finish(UUID)` on return: the place (`> 0`) or `-1` if the pilot had dropped out |
+| `leaderboard.reset` | `CourseRegistryMixin` | `CourseRegistry#resetLeaderboard(Course, String playerName)` on return |
+| `course.removed` | `CourseRegistryMixin` | `CourseRegistry#deleteCourse(int)` on return, if it returned `true`. `removeUnusedCourses()` removes courses without it and isn't reported |
 
-Building `race.result` with option B:
+How `race.result` is built:
 
-1. In `submitRace` or `submitAssistedRace`, store `{ course, player, laps, totalNanos, assisted }`.
-2. Check `RaceServer.heat(course.id)`. If it's `null`, if `!heat.multiplayer()`, or if the pilot isn't in `heat.pilots()`, it's a solo race: emit `race.result` with a single result.
-3. Otherwise, collect into a per-heat aggregator with `heatId = UUID.randomUUID()` and store the place returned by `Heat#finish`.
-4. Every second, check open aggregators with `heat.done(System.nanoTime())`. When done: finishers by place, the rest of `heat.pilots()` as `dnf`. Emit `race.result`.
+1. At heat start, multiplayer heats (`heat.multiplayer()`, 2+ pilots) get an aggregator with `heatId = UUID.randomUUID()` and the pilots' names.
+2. On a valid finish, if `RaceServer.heat(course.id)` is a tracked heat and the pilot is in `heat.pilots()`, the finish waits for the place that `Heat#finish` returns right after. Otherwise it's a solo race and `race.result` goes out with a single result (`multiplayer: false`).
+3. Every second, aggregators whose `heat.done(System.nanoTime())` is `true` (everyone finished or dropped out, or 15 min) are emitted: finishers by place, the other pilots as `dnf`. A heat where nobody finished isn't sent.
+4. `frame` is the class of the drone the pilot is flying when crossing the line (`RaceServer.pilotedDrone(player)`). `bestLapNanos` isn't sent.
 
 > The rest of Propwash (everything except the API) is licensed under PolyForm Shield 1.0.0. Before distributing the bridge, read `LICENSE` or ask the author.
 

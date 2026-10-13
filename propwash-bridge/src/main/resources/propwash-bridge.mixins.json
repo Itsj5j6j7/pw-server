@@ -1,0 +1,14 @@
+{
+	"required": true,
+	"package": "dev.j4v1.propwashbridge.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"mixins": [
+		"ExampleMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}

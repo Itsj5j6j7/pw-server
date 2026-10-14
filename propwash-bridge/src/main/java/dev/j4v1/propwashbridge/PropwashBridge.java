@@ -42,7 +42,7 @@ public class PropwashBridge implements ModInitializer {
 			return;
 		}
 		if (config.apiKey().isEmpty()) {
-			LOGGER.warn("No apiKey in config/{}.json, the bridge stays idle", MOD_ID);
+			LOGGER.warn("No apiKey (PROPWASH_BRIDGE_API_KEY or config/{}.json), the bridge stays idle", MOD_ID);
 			return;
 		}
 		LOGGER.info("Bridge enabled for {} with key ...{}", config.apiUrl(), config.apiKey().substring(Math.max(0, config.apiKey().length() - 4)));
@@ -70,7 +70,10 @@ public class PropwashBridge implements ModInitializer {
 
 	private static JsonObject heartbeat(MinecraftServer s) {
 		JsonArray players = new JsonArray();
+		int online = 0;
 		for (ServerPlayer player : s.getPlayerList().getPlayers()) {
+			if (Vanish.hidden(player)) continue;
+			online++;
 			// One name the bot can't validate would reject the whole heartbeat.
 			if (!Races.name(player).matches("\\w{1,16}")) continue;
 			JsonObject json = Races.player(player.getUUID(), Races.name(player));
@@ -81,7 +84,7 @@ public class PropwashBridge implements ModInitializer {
 		double mspt = s.getAverageTickTimeNanos() / 1e6;
 		Runtime runtime = Runtime.getRuntime();
 		JsonObject body = versions();
-		body.addProperty("onlinePlayers", s.getPlayerCount());
+		body.addProperty("onlinePlayers", online);
 		body.addProperty("maxPlayers", s.getPlayerList().getMaxPlayers());
 		body.add("players", players);
 		body.addProperty("tps", Math.round(Math.min(20, 1000 / mspt) * 10) / 10.0);

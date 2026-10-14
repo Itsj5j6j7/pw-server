@@ -405,6 +405,8 @@ How `race.result` is built:
 | `batchMs` | How often the queue is flushed |
 | `queueMax` | In-memory queue cap |
 
+- `PROPWASH_BRIDGE_API_KEY` and `PROPWASH_BRIDGE_API_URL`, when set in the server's environment, win over `apiKey` and `apiUrl`. The deploy of the community server puts the key there, so it never sits in a file.
+- Players hidden by the Vanish mod (`/vanish`) are left out of the heartbeat, `onlinePlayers` included.
 - If `apiKey` is empty, the mod logs one warning and stays idle: the server runs as normal and nothing is sent. This lets the `.jar` be dropped on a server before it has a key.
 - Never log the key. If needed, log its last 4 characters.
 

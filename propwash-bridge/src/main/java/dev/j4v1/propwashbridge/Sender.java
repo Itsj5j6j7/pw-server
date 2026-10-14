@@ -31,7 +31,7 @@ final class Sender {
 	private static final int MAX_BATCH = 50;
 	private static final long MAX_BACKOFF_MS = 60_000;
 	/** Kept for as long as possible when the queue is full. */
-	private static final Set<String> PRIORITY = Set.of("race.best_lap", "race.result");
+	private static final Set<String> PRIORITY = Set.of("race.best_lap");
 
 	private record Event(String type, JsonObject json) {
 	}

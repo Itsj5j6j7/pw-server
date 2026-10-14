@@ -1,6 +1,6 @@
 # Propwash Bridge
 
-Server-side Fabric mod that reports server status, race results and records from Propwash to the Discord bot. Contract and design: [`../BRIDGE.md`](../BRIDGE.md).
+Server-side Fabric mod that reports server status, records and course changes from Propwash to the Discord bot. Contract and design: [`../BRIDGE.md`](../BRIDGE.md).
 
 ## Build
 
@@ -33,4 +33,4 @@ Players run `/link` in game to get a code for `/link <code>` on Discord.
 
 ## Propwash updates
 
-Race events come from mixins on Propwash internals, checked against 0.5.1 (see `BRIDGE.md` §5.4). After updating Propwash, look for Mixin errors mentioning `propwash-bridge` in the server log: the server still starts, but the affected events stop arriving.
+Record events (`race.best_lap`, `leaderboard.reset`, `course.removed`) come from one mixin on `CourseRegistry`, checked against 0.5.1 (see `BRIDGE.md` §5.4). After updating Propwash, look for Mixin errors mentioning `propwash-bridge` in the server log: the server still starts, but the affected events stop arriving.

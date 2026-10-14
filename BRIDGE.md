@@ -262,6 +262,8 @@ What the bot does: stores the time in that server's leaderboard for the course (
 
 ### `race.result`
 
+**Not sent by the mod yet** (see 5.4: waiting for Propwash's race events). The bot accepts it.
+
 Sent **once per race**, when it ends: everyone finished or dropped out, or time ran out. For a solo race it's sent when the pilot crosses the line, with a single result.
 
 ```json
@@ -368,18 +370,8 @@ Race data: the Propwash public API (1.5.0) **has no race events**. There are two
 | Event | Mixin | Hook |
 |---|---|---|
 | `race.best_lap` | `CourseRegistryMixin` | `@WrapMethod` on `CourseRegistry#submitLap(Course, ServerPlayer, String frame, long lapNanos)`: reads `board(course).record(null)` and `.record(frame)` before, the `Leaderboard.Outcome` after. Only non-assisted laps go through it |
-| `race.result` (finish) | `RaceServerMixin` + `SessionAccessor` | `RaceServer#finish(...)` at the `GETSTATIC HEATS`, reached only by valid finishes, assisted or not. `assisted = (session.raceAssist \| session.lapAssist) != 0`. Hooking `submitRace`/`submitAssistedRace` would miss assisted finishes when the `SAVE_ASSISTED_LAPS` world rule is off |
-| `race.result` (heat start) | `RaceLobbyMixin` | `@WrapMethod` on `RaceLobby#start(long)`: pilots and names from the lobby (`members()` and `names()`, same order) before it's cleared |
-| `race.result` (place) | `HeatMixin` | `RaceLobby.Heat#finish(UUID)` on return: the place (`> 0`) or `-1` if the pilot had dropped out |
-| `leaderboard.reset` | `CourseRegistryMixin` | `CourseRegistry#resetLeaderboard(Course, String playerName)` on return |
-| `course.removed` | `CourseRegistryMixin` | `CourseRegistry#deleteCourse(int)` on return, if it returned `true`. `removeUnusedCourses()` removes courses without it and isn't reported |
 
-How `race.result` is built:
-
-1. At heat start, multiplayer heats (`heat.multiplayer()`, 2+ pilots) get an aggregator with `heatId = UUID.randomUUID()` and the pilots' names.
-2. On a valid finish, if `RaceServer.heat(course.id)` is a tracked heat and the pilot is in `heat.pilots()`, the finish waits for the place that `Heat#finish` returns right after. Otherwise it's a solo race and `race.result` goes out with a single result (`multiplayer: false`).
-3. Every second, aggregators whose `heat.done(System.nanoTime())` is `true` (everyone finished or dropped out, or 15 min) are emitted: finishers by place, the other pilots as `dnf`. A heat where nobody finished isn't sent.
-4. `frame` is the class of the drone the pilot is flying when crossing the line (`RaceServer.pilotedDrone(player)`). `bestLapNanos` isn't sent.
+`race.result` is **not sent yet**: it needs heats, places and dropouts, which come from internals that are about to change. The mod will send it once Propwash's API publishes race events (option A above). The bot already accepts the event (section 4).
 
 > The rest of Propwash (everything except the API) is licensed under PolyForm Shield 1.0.0. Before distributing the bridge, read `LICENSE` or ask the author.
 
@@ -419,7 +411,7 @@ Rules:
 3. **The `id` is generated when the event is created** and kept across every retry.
 4. **Don't retry what the bot rejects** (`400` or `rejected`).
 5. **If the bot is down, the server keeps running** as normal.
-6. **If the queue fills up**, drop the oldest events first, but keep `race.best_lap` and `race.result` for as long as possible.
+6. **If the queue fills up**, drop the oldest events first, but keep `race.best_lap` (and `race.result`, once sent) for as long as possible.
 
 Lifecycle:
 

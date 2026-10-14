@@ -3,11 +3,7 @@
 	"package": "dev.j4v1.propwashbridge.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
-		"CourseRegistryMixin",
-		"HeatMixin",
-		"RaceLobbyMixin",
-		"RaceServerMixin",
-		"SessionAccessor"
+		"CourseRegistryMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

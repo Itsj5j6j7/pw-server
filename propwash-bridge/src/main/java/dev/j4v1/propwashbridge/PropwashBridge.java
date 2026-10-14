@@ -61,7 +61,6 @@ public class PropwashBridge implements ModInitializer {
 			sender.stop(stopping);
 		});
 		ServerTickEvents.END_SERVER_TICK.register(s -> {
-			if (s.getTickCount() % 20 == 0) Races.tick();
 			if (s.getTickCount() % (config.heartbeatSeconds() * 20) == 0) sender.heartbeat(heartbeat(s));
 		});
 		CommandRegistrationCallback.EVENT.register((dispatcher, context, selection) -> dispatcher.register(

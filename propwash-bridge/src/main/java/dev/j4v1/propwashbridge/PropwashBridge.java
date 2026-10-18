@@ -6,7 +6,6 @@ import de.lardtom.propwash.api.PropwashApi;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.Commands;
@@ -53,15 +52,14 @@ public class PropwashBridge implements ModInitializer {
 			startedAt = System.currentTimeMillis();
 			JsonObject started = versions();
 			started.addProperty("maxPlayers", s.getPlayerList().getMaxPlayers());
-			sender.start(started);
+			// Not from a tick event: an empty server stops ticking after pause-when-empty-seconds, and the bot would mark it offline.
+			// Server tasks still run while paused, so the heartbeat is built on the server thread anyway.
+			sender.start(started, () -> s.execute(() -> sender.heartbeat(heartbeat(s))));
 		});
 		ServerLifecycleEvents.SERVER_STOPPING.register(s -> {
 			JsonObject stopping = new JsonObject();
 			stopping.addProperty("reason", "stop");
 			sender.stop(stopping);
-		});
-		ServerTickEvents.END_SERVER_TICK.register(s -> {
-			if (s.getTickCount() % (config.heartbeatSeconds() * 20) == 0) sender.heartbeat(heartbeat(s));
 		});
 		CommandRegistrationCallback.EVENT.register((dispatcher, context, selection) -> dispatcher.register(
 				Commands.literal("link").executes(c -> link(c.getSource().getPlayerOrException()))));

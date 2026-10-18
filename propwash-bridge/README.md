@@ -6,7 +6,7 @@ Server-side Fabric mod that reports server status, records and course changes fr
 
 Propwash isn't published on any maven, so the build compiles against the local jar:
 
-1. Copy `propwash-fabric-26.3-0.5.1.jar` and the Vanish mod jar (`vanish-1.6.16+26.3.jar`, from Modrinth, compile-only) into `libs/` (gitignored: Propwash is PolyForm Shield).
+1. Copy `propwash-fabric-26.3-0.5.2.jar` and the Vanish mod jar (`vanish-1.6.16+26.3.jar`, from Modrinth, compile-only) into `libs/` (gitignored: Propwash is PolyForm Shield).
 2. `./gradlew build` → `build/libs/propwash-bridge-<version>.jar`.
 
 The GitHub workflow fails without that jar.
@@ -33,4 +33,4 @@ Players run `/link` in game to get a code for `/link <code>` on Discord.
 
 ## Propwash updates
 
-Record events (`race.best_lap`, `leaderboard.reset`, `course.removed`) come from one mixin on `CourseRegistry`, checked against 0.5.1 (see `BRIDGE.md` §5.4). After updating Propwash, look for Mixin errors mentioning `propwash-bridge` in the server log: the server still starts, but the affected events stop arriving.
+Record events (`race.best_lap`, `leaderboard.reset`, `course.removed`) come from one mixin on `CourseRegistry`, checked against 0.5.1 and 0.5.2 (see `BRIDGE.md` §5.4). After updating Propwash, look for Mixin errors mentioning `propwash-bridge` in the server log: the server still starts, but the affected events stop arriving.

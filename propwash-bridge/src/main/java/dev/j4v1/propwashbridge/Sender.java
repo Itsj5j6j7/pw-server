@@ -58,9 +58,17 @@ final class Sender {
 		this.userAgent = "propwash-bridge/" + modVersion;
 	}
 
-	void start(JsonObject started) {
+	/** {@code heartbeat} runs every {@code heartbeatSeconds} on the sender thread. */
+	void start(JsonObject started, Runnable heartbeat) {
 		Event event = event("server.started", started);
 		thread.execute(() -> ping(event));
+		thread.scheduleAtFixedRate(() -> {
+			try {
+				heartbeat.run();
+			} catch (RuntimeException e) {
+				LOGGER.error("Bridge heartbeat failed", e);
+			}
+		}, config.heartbeatSeconds(), config.heartbeatSeconds(), TimeUnit.SECONDS);
 		thread.scheduleWithFixedDelay(() -> {
 			// An exception here would cancel the schedule for good.
 			try {

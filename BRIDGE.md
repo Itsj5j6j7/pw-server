@@ -365,7 +365,7 @@ Race data: the Propwash public API (1.5.0) **has no race events**. There are two
 | `LEADERBOARD_RESET` | course, optional name | `leaderboard.reset` |
 | `COURSE_REMOVED` | id | `course.removed` |
 
-**B. Mixins on internal classes (what the mod does today).** Verified against Propwash **0.5.1** (`propwash-fabric-26.3-0.5.1.jar`). **They're internal, so they can change in any release**: keep every server on the same Propwash version and check the hooks after each update. The mixin config is `required: false`, so a hook that no longer matches is logged as a Mixin error and the server still starts; only that event stops arriving.
+**B. Mixins on internal classes (what the mod does today).** Verified against Propwash **0.5.1 and 0.5.2** (`propwash-fabric-26.3-0.5.2.jar`; `submitLap`, `resetLeaderboard` and `deleteCourse` are identical in both). **They're internal, so they can change in any release**: keep every server on the same Propwash version and check the hooks after each update. The mixin config is `required: false`, so a hook that no longer matches is logged as a Mixin error and the server still starts; only that event stops arriving.
 
 | Event | Mixin | Hook |
 |---|---|---|

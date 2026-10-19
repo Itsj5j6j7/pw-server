@@ -454,7 +454,7 @@ curl -s -X POST -H "Authorization: Bearer $KEY_FPV" -H "Content-Type: applicatio
   -d '{"onlinePlayers":1,"maxPlayers":20,"players":[{"uuid":"069a79f4-44e9-4726-a5be-fca90e38aaf5","name":"Javi","dimension":"propwash:arena"}]}'
 ```
 
-To see the result on Discord without the mod, from `propwash/` with the keys in `.env`. The second argument is the `.env` variable holding the key (default `BRIDGE_API_KEY`), so two runs simulate two servers:
+To see the result on Discord without the mod, from `bot/` with the keys in `.env`. The second argument is the `.env` variable holding the key (default `BRIDGE_API_KEY`), so two runs simulate two servers:
 
 ```bash
 node scripts/fake-mod.js https://pw.itofu.net BRIDGE_KEY_FPV

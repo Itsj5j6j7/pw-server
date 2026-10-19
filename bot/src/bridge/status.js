@@ -41,12 +41,12 @@ const updateMessage = () => enqueue(async () => {
     lastRendered = rendered;
 });
 
-// The status channel is named 🟢┃status while any server is online and 🔴┃status when all are off.
+// The status channel is named 🟢│status while any server is online and 🔴│status when all are off.
 let lastName = null;
 const updateChannelName = () => {
     if ([...states.values()].every((state) => state.online === null)) return;
 
-    const name = [...states.values()].some((state) => state.online) ? '🟢┃status' : '🔴┃status';
+    const name = [...states.values()].some((state) => state.online) ? '🟢│status' : '🔴│status';
     if (name === lastName) return;
     lastName = name;
     rename(config.bridge.channels.status, name).catch(console.error);

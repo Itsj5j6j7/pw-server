@@ -48,7 +48,7 @@ const config = {
             }
         },
         channels: {
-            status: '1561056855013335240', // Fixed status message, edited in place. The channel is renamed 🟢┃status / 🔴┃status (any server online / all off): the bot needs Manage Channels.
+            status: '1561056855013335240', // Fixed status message, edited in place. The channel is renamed 🟢│status / 🔴│status (any server online / all off): the bot needs Manage Channels.
             races: '1561057176959844514', // Race results.
             records: '1561057033321451713' // Course and class records.
         },

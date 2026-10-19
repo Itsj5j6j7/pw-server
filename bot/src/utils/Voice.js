@@ -21,7 +21,7 @@ const nextName = (client) => {
     const used = new Set(Object.keys(tracked(client)).map((id) => client.channels.cache.get(id)?.name.match(/Voice (\d+)$/)?.[1]));
     let n = 1;
     while (used.has(String(n))) n++;
-    return `🎤┃Voice ${n}`;
+    return `🎤│Voice ${n}`;
 };
 
 // Starts the delete countdown if the channel is empty, cancels it if someone is in.

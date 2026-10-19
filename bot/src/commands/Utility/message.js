@@ -38,7 +38,8 @@ module.exports = new ApplicationCommand({
           { name: '👋 Welcome', value: 'welcome' },
           { name: '☕ Donations', value: 'donations' },
           { name: '🎫 Tickets', value: 'tickets' },
-          { name: '🎭 Auto Roles', value: 'autoroles' }
+          { name: '🎭 Auto Roles', value: 'autoroles' },
+          { name: '🎤 Voice', value: 'voice' }
         ]
       }
     ]
@@ -273,6 +274,22 @@ Pick the category that fits your issue and a private channel will be created for
           button('loader', 'fabric', 'Fabric', '🧵'),
           button('loader', 'neoforge', 'NeoForge', '🦊')
         ))
+
+      await interaction.channel.send({
+        flags: MessageFlags.IsComponentsV2,
+        components: [container]
+      });
+    } else if (messageType === 'voice') {
+      const container = new ContainerBuilder()
+        .addSectionComponents(new SectionBuilder()
+          .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🎤  Temporary voice channel\nPress the button or use the \`/vc\` command to create a temporary voice channel.`))
+          .setButtonAccessory(new ButtonBuilder()
+            .setStyle(ButtonStyle.Primary)
+            .setLabel('Create')
+            .setCustomId('vc_create')
+            .setEmoji('🎤')
+          )
+        )
 
       await interaction.channel.send({
         flags: MessageFlags.IsComponentsV2,

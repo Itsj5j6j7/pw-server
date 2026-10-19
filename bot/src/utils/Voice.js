@@ -1,4 +1,6 @@
+const { ChannelType, PermissionFlagsBits } = require('discord.js');
 const config = require('../config');
+const { notice } = require('./Notice');
 
 const KEY = 'voice-channels'; // { channelId: ownerId } of the temporary voice channels.
 const timers = new Map();
@@ -34,6 +36,35 @@ const check = (client, channel) => {
     }, config.voice.deleteAfterMinutes * 60000));
 };
 
+// Creates the member's temporary voice channel and replies to the interaction (/vc and the vc_create button).
+const open = async (client, interaction, limit = 0) => {
+    const owned = Object.entries(tracked(client)).find(([, ownerId]) => ownerId === interaction.user.id);
+    if (owned) {
+        if (interaction.guild.channels.cache.has(owned[0])) {
+            return interaction.reply(notice(config.emojis.no, `You already have a voice channel: <#${owned[0]}>.`));
+        }
+        forget(client, owned[0]);
+    }
+
+    const channel = await interaction.guild.channels.create({
+        name: nextName(client),
+        type: ChannelType.GuildVoice,
+        parent: config.voice.category,
+        permissionOverwrites: [{
+            id: interaction.guild.id,
+            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect]
+        }],
+        userLimit: limit,
+        reason: `Temporary voice channel by ${interaction.user.tag}`
+    });
+
+    track(client, channel.id, interaction.user.id);
+    check(client, channel);
+    await interaction.member.voice.setChannel(channel).catch(() => { });
+
+    await interaction.reply(notice(config.emojis.yes, `Your voice channel is ready: <#${channel.id}>. It will be deleted after ${config.voice.deleteAfterMinutes} minutes empty.`));
+};
+
 // On startup: drops the channels deleted meanwhile and restarts the countdown of the empty ones.
 const sweep = (client) => {
     for (const id of Object.keys(tracked(client))) {
@@ -43,4 +74,4 @@ const sweep = (client) => {
     }
 };
 
-module.exports = { tracked, track, forget, nextName, check, sweep };
+module.exports = { tracked, track, forget, nextName, check, open, sweep };

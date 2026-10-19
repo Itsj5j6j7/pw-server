@@ -1,9 +1,7 @@
-const { ChatInputCommandInteraction, ApplicationCommandOptionType, ChannelType, PermissionFlagsBits } = require("discord.js");
+const { ChatInputCommandInteraction, ApplicationCommandOptionType } = require("discord.js");
 const DiscordBot = require("../../client/DiscordBot");
 const ApplicationCommand = require("../../structure/ApplicationCommand");
-const config = require("../../config");
-const { notice } = require("../../utils/Notice");
-const { tracked, track, forget, nextName, check } = require("../../utils/Voice");
+const { open } = require("../../utils/Voice");
 
 module.exports = new ApplicationCommand({
     command: {
@@ -32,30 +30,6 @@ module.exports = new ApplicationCommand({
      * @param {ChatInputCommandInteraction} interaction
      */
     run: async (client, interaction) => {
-        const owned = Object.entries(tracked(client)).find(([, ownerId]) => ownerId === interaction.user.id);
-        if (owned) {
-            if (interaction.guild.channels.cache.has(owned[0])) {
-                return interaction.reply(notice(config.emojis.no, `You already have a voice channel: <#${owned[0]}>.`));
-            }
-            forget(client, owned[0]);
-        }
-
-        const channel = await interaction.guild.channels.create({
-            name: nextName(client),
-            type: ChannelType.GuildVoice,
-            parent: config.voice.category,
-            permissionOverwrites: [{
-                id: interaction.guild.id,
-                allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect]
-            }],
-            userLimit: interaction.options.getInteger('limit') ?? 0,
-            reason: `/vc by ${interaction.user.tag}`
-        });
-
-        track(client, channel.id, interaction.user.id);
-        check(client, channel);
-        await interaction.member.voice.setChannel(channel).catch(() => { });
-
-        await interaction.reply(notice(config.emojis.yes, `Your voice channel is ready: <#${channel.id}>. It will be deleted after ${config.voice.deleteAfterMinutes} minutes empty.`));
+        await open(client, interaction, interaction.options.getInteger('limit') ?? 0);
     }
 }).toJSON();

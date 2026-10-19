@@ -10,7 +10,7 @@ import java.nio.file.Path;
 
 record Config(String apiUrl, String apiKey, int heartbeatSeconds, int batchMs, int queueMax) {
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-	private static final Config DEFAULTS = new Config("https://pw.itofu.net", "", 30, 1000, 200);
+	private static final Config DEFAULTS = new Config("http://127.0.0.1:3006", "", 30, 1000, 200);
 
 	/** PROPWASH_BRIDGE_API_URL and PROPWASH_BRIDGE_API_KEY, when set, win over the file: the key stays out of the config folder. */
 	private static String env(String name, String fallback) {

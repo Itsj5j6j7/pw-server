@@ -23,7 +23,7 @@ const config = {
         channel: 'Channel ID' // Trap channel for spam bots. Anyone writing here is kicked or banned while /honeypot is on (staff roles are ignored).
     },
     bridge: { // HTTP API the Minecraft bridge mod reports to: server status, race results, records and /leaderboard. Runs as its own process (src/bridge/index.js).
-        host: '0.0.0.0', // Caddy runs in Docker and proxies to the host (172.18.0.1). Use '127.0.0.1' if the proxy runs on the host.
+        host: '127.0.0.1', // The mods run on the same machine: keep the API off the network.
         port: 3006,
         databasePath: './bridge.db', // SQLite, shared by the bot and the API processes. Created on first start.
         servers: { // One entry per Minecraft server with the bridge mod; the key of each entry is the server id. Empty: BRIDGE_API_KEY is a single server.

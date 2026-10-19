@@ -23,15 +23,14 @@ cd bot
 pnpm install
 
 cp .env.example .env
-cp src/example.config.js src/config.js
 ```
 
 Fill in:
 
 - `.env`: `CLIENT_TOKEN`, `TYPESAFE_API_KEY` (FAQ answers), and one API key per Minecraft server (`BRIDGE_KEY_FPV`, `BRIDGE_KEY_PLOTS`; generate each with `openssl rand -hex 32`). With a single server, use `BRIDGE_API_KEY` and leave `bridge.servers` empty.
-- `src/config.js`: channel, role and category IDs; the `bridge` block (port, servers, channels). Every field is commented in `src/example.config.js`.
+- `src/config.js`: channel, role and category IDs; the `bridge` block (port, servers, channels). Versioned: edit it and commit, it holds no secrets (API keys stay in `.env`). Every field is commented in the file.
 
-Both files are gitignored. Never commit them.
+`.env` is gitignored. Never commit it.
 
 The key a mod sends is what tells the API which server is talking, so the same keys go in each backend's `config/propwash-bridge.json`.
 

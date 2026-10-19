@@ -8,7 +8,7 @@ const config = {
     },
     commands: {
         prefix: '?', // For message commands, prefix is required. This can be changed by a database.
-        message_commands: true, // If true, the bot will allow users to use message (or prefix) commands.
+        message_commands: false, // If true, the bot will allow users to use message (or prefix) commands.
         application_commands: {
             chat_input: true, // If true, the bot will allow users to use chat input (or slash) commands.
             user_context: true, // If true, the bot will allow users to use user context menu commands.
@@ -16,11 +16,11 @@ const config = {
         }
     },
     faq: {
-        channels: ['Channel ID'], // Channels where the bot auto-answers FAQ questions.
-        adminRoles: ['Role ID'] // Roles allowed to enable/disable the FAQ auto-answer with /faq.
+        channels: ['1552946336112836660'], // Channels where the bot auto-answers FAQ questions.
+        adminRoles: ['1552947138693046312', '1560667470711365724', '1557121473263571004', '1561807668950073484'] // Roles allowed to enable/disable the FAQ auto-answer with /faq.
     },
     honeypot: {
-        channel: 'Channel ID' // Trap channel for spam bots. Anyone writing here is kicked or banned while /honeypot is on (staff roles are ignored).
+        channel: '1559122979344875601' // Trap channel for spam bots. Anyone writing here is kicked or banned while /honeypot is on (staff roles are ignored).
     },
     bridge: { // HTTP API the Minecraft bridge mod reports to: server status, race results, records and /leaderboard. Runs as its own process (src/bridge/index.js).
         host: '127.0.0.1', // The mods run on the same machine: keep the API off the network.
@@ -30,18 +30,27 @@ const config = {
             fpv: {
                 name: 'FPV', // Shown in Discord when there is more than one server.
                 keyEnv: 'BRIDGE_KEY_FPV', // .env variable holding this server's API key (openssl rand -hex 32).
-                maps: {} // Dimension -> display name for this server only, takes precedence over bridge.maps.
+                maps: { // Dimension -> display name for this server only, takes precedence over bridge.maps.
+                    'maps:tutorial': 'Tutorial',
+                    'maps:flowmap': 'Flowmap',
+                    'maps:driftpark': 'Drift Arena',
+                    'maps:motoarena': 'Moto Arena',
+                    'maps:greenfield': 'Greenfield',
+                    'maps:mattupolis': 'Mattupolis',
+                    'maps:mosslorn': 'Mosslorn',
+                    'maps:mountains': 'Mountain Range'
+                }
             },
             plots: {
                 name: 'Plots',
                 keyEnv: 'BRIDGE_KEY_PLOTS',
-                maps: { 'minecraft:overworld': 'Plots' }
+                maps: { 'fabricplots:plots': 'Plots' }
             }
         },
         channels: {
-            status: 'Channel ID', // Fixed status message, edited in place. The channel is renamed 🟢┃status / 🔴┃status (any server online / all off): the bot needs Manage Channels.
-            races: 'Channel ID', // Race results.
-            records: 'Channel ID' // Course and class records.
+            status: '1561056855013335240', // Fixed status message, edited in place. The channel is renamed 🟢┃status / 🔴┃status (any server online / all off): the bot needs Manage Channels.
+            races: '1561057176959844514', // Race results.
+            records: '1561057033321451713' // Course and class records.
         },
         maps: { // Dimension -> display name. Missing ones are derived from the id ("propwash:drone_arena" -> "Drone Arena").
             'minecraft:overworld': 'Overworld'
@@ -53,38 +62,38 @@ const config = {
         link: { codeTtlSeconds: 600 }
     },
     emojis: { // Custom emojis used in bot replies, format '<:name:id>' or '<a:name:id>' for animated ones.
-        yes: '<:pw_yes:1557747409369440416>',
-        no: '<:pw_no:1557747437139918888>',
-        question: '<:pw_question:1557747462041772192>',
-        slash: '<:pw_slash:1557747481675042866>',
-        warning: '<:pw_warning:1557747503552663693>'
+        yes: '<:pw_yes:1561840403588841542>',
+        no: '<:pw_no:1561840427680927834>',
+        question: '<:pw_question:1561840456076107836>',
+        slash: '<:pw_slash:1561840485587484672>',
+        warning: '<:pw_warning:1561840504432492614>'
     },
     channels: { // Channels mentioned in the /message messages.
-        rules: 'Channel ID',
-        tickets: 'Channel ID',
-        bugsAndIdeas: 'Channel ID'
+        rules: '1552712663858028725',
+        tickets: '1561806216039108678',
+        bugsAndIdeas: '1552946511896248390'
     },
     autoroles: { // Roles given by the buttons of the /message auto-roles message.
         notifications: { // A member can have several.
-            updates: 'Role ID',
-            raceEvents: 'Role ID',
-            betaTesting: 'Role ID'
+            updates: '1561828742513295523',
+            raceEvents: '1561828764579799072',
+            betaTesting: '1558145187287400581'
         },
         experience: { // Only one at a time: picking another one swaps it.
-            realPilot: 'Role ID',
-            simPilot: 'Role ID',
-            newToFpv: 'Role ID'
+            realPilot: '1561833752253173810',
+            simPilot: '1561833804912398416',
+            newToFpv: '1561833861606809730'
         },
         loader: { // A member can have several.
-            fabric: 'Role ID',
-            neoforge: 'Role ID'
+            fabric: '1561833929835675778',
+            neoforge: '1561833964501602316'
         }
     },
     suggestions: {
-        channel: 'Channel ID' // Suggestions are posted here. Any message not sent through /suggest is deleted.
+        channel: '1561837810116206624' // Suggestions are posted here. Any message not sent through /suggest is deleted.
     },
     tickets: {
-        staffRoles: ['Role ID'], // Roles that can see every ticket and use the ticket commands.
+        staffRoles: ['1552947138693046312', '1560667470711365724', '1557121473263571004', '1561807668950073484'], // Roles that can see every ticket and use the ticket commands.
         categories: { // Category where each ticket type is created.
             help: 'Category ID',
             bug: 'Category ID',
@@ -94,12 +103,12 @@ const config = {
         transcriptsChannel: 'Channel ID' // Transcripts are sent here when a ticket is closed.
     },
     voice: {
-        category: 'Category ID', // /vc creates the temporary voice channels here. Keep the category private: each channel lets @everyone view and join, so the category only shows while there are channels. The bot needs View Channel, Manage Channels and Move Members.
-        deleteAfterMinutes: 5 // A temporary channel is deleted after being empty this long.
+        category: '1561838832645578843', // /vc creates the temporary voice channels here. Keep the category private: each channel lets @everyone view and join, so the category only shows while there are channels. The bot needs View Channel, Manage Channels and Move Members.
+        deleteAfterMinutes: 3 // A temporary channel is deleted after being empty this long.
     },
     users: {
-        ownerId: 'Your account ID', // The bot owner ID, which is you.
-        developers: ['Your account ID', 'Another account ID'] // The bot developers, remember to include your account ID with the other account IDs.
+        ownerId: '265862515420954625', // The bot owner ID, which is you.
+        developers: ['265862515420954625', '355529049986301953', '214063863799349249', '742505697127694436'] // The bot developers, remember to include your account ID with the other account IDs.
     },
     messages: { // Messages configuration for application commands and message commands handler.
         NOT_BOT_OWNER: 'You do not have the permission to run this command because you\'re not the owner of me!',

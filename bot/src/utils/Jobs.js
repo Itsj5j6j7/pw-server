@@ -1,4 +1,4 @@
-const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder } = require('discord.js');
+const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize } = require('discord.js');
 const config = require('../config');
 
 // Keys match config.jobs.tags.time / config.jobs.tags.type.
@@ -11,14 +11,15 @@ const RULES = 'Rules go here.';
 const isJobAdmin = (member) => config.jobs.adminRoles.some((roleId) => member.roles.cache.has(roleId));
 
 const buildJob = ({ title, description, time, type }) => {
-    const separator = new SeparatorBuilder();
+    const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large);
 
     return new ContainerBuilder()
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`### 💼 ${title}`))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 💼 ${title}`))
         .addSeparatorComponents(separator)
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(description))
         .addSeparatorComponents(separator)
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ⏱️ ${TIMES[time]}  ·  🏷️ ${TYPES[type]}`));
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ⏱️ ${TIMES[time]}  ·  🏷️ ${TYPES[type]}`))
+        .addSeparatorComponents(separator);
 };
 
 module.exports = { TIMES, TYPES, RULES, isJobAdmin, buildJob };

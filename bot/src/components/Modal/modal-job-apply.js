@@ -38,7 +38,6 @@ module.exports = new Component({
     await channel.send({
       flags: MessageFlags.IsComponentsV2,
       components: [buildJob(job)
-        .addSeparatorComponents(new SeparatorBuilder())
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`<@${interaction.user.id}>, what would you bring to this role?`))]
     });
 

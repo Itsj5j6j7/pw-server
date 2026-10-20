@@ -1,8 +1,9 @@
-const { ChatInputCommandInteraction, ButtonStyle, ButtonBuilder, SectionBuilder, ActionRowBuilder, ContainerBuilder, TextDisplayBuilder, MediaGalleryItemBuilder, MediaGalleryBuilder, MessageFlags, ApplicationCommandOptionType, SeparatorBuilder, SeparatorSpacingSize, PermissionFlagsBits } = require("discord.js");
+const { ChatInputCommandInteraction, ButtonStyle, ButtonBuilder, SectionBuilder, ActionRowBuilder, ContainerBuilder, TextDisplayBuilder, MediaGalleryItemBuilder, MediaGalleryBuilder, MessageFlags, ApplicationCommandOptionType, SeparatorBuilder, SeparatorSpacingSize } = require("discord.js");
 const DiscordBot = require("../../client/DiscordBot");
 const ApplicationCommand = require("../../structure/ApplicationCommand");
 const config = require("../../config");
 const { notice } = require("../../utils/Notice");
+const { isStaff, replyError } = require("../../utils/Tickets");
 
 const banners = {
   rules: 'https://assets.itofu.net/f/propwash-rules.png',
@@ -26,7 +27,6 @@ module.exports = new ApplicationCommand({
     name: 'message',
     description: 'Pre-made messages',
     type: 1,
-    default_member_permissions: PermissionFlagsBits.Administrator.toString(),
     options: [
       {
         name: 'message',
@@ -53,6 +53,8 @@ module.exports = new ApplicationCommand({
    * @param {ChatInputCommandInteraction} interaction
    */
   run: async (client, interaction) => {
+    if (!isStaff(interaction.member)) return replyError(interaction, 'You do not have permission to execute this command.');
+
     const separator2 = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large);
 
     const messageType = interaction.options.getString('message');

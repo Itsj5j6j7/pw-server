@@ -19,7 +19,7 @@ const links = {
   github: 'https://github.com/LardTom/propwash-fpv',
   configurator: 'https://propwashfpv.com/configurator/',
   curseforge: 'https://www.curseforge.com/minecraft/mc-mods/propwash-fpv',
-  kofi: 'https://ko-fi.com/lardtom'
+  kofi: 'https://ko-fi.com/propwashfpv'
 }
 
 module.exports = new ApplicationCommand({

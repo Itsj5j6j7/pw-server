@@ -109,6 +109,15 @@ const config = {
         category: '1561838832645578843', // /vc creates the temporary voice channels here. Keep the category private: each channel lets @everyone view and join, so the category only shows while there are channels. The bot needs View Channel, Manage Channels and Move Members.
         deleteAfterMinutes: 3 // A temporary channel is deleted after being empty this long.
     },
+    jobs: {
+        adminRoles: ['1552947138693046312', '1560667470711365724', '1557121473263571004', '1561807668950073484'], // Roles that can use /job-application and see every applicant channel.
+        forum: 'Forum channel ID', // Job offers are posted here.
+        category: 'Category ID', // "I'm interested" creates the applicant channel (<id>-<name>) here. Keep it private: only the applicant and adminRoles get access.
+        tags: { // Forum tag IDs applied to each post: available_tags of GET /channels/<forum id>.
+            time: { short: 'Tag ID', long: 'Tag ID', once: 'Tag ID' },
+            type: { moderation: 'Tag ID', content: 'Tag ID', builder: 'Tag ID', other: 'Tag ID' }
+        }
+    },
     users: {
         ownerId: '265862515420954625', // The bot owner ID, which is you.
         developers: ['265862515420954625', '355529049986301953', '214063863799349249', '742505697127694436'] // The bot developers, remember to include your account ID with the other account IDs.

@@ -31,6 +31,7 @@ module.exports = new ApplicationCommand({
         if (store.getLink(entry.uuid)) return interaction.reply(notice(config.emojis.no, 'That Minecraft account is already linked.'));
 
         store.link(entry.uuid, entry.name, interaction.user.id);
+        await interaction.member.roles.add(config.bridge.link.role).catch(() => null);
         await interaction.reply(notice(config.emojis.yes, `Linked to **${escapeMarkdown(entry.name)}**. Use \`/unlink\` to undo it.`));
     }
 }).toJSON();

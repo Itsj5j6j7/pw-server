@@ -59,7 +59,10 @@ const config = {
         statusPlayerNames: true, // Status message: true lists the players of each map, false only shows how many there are.
         raceLog: { includeSolo: false }, // Also post races with a single pilot.
         heartbeat: { offlineAfterSeconds: 90, statusEditSeconds: 60 },
-        link: { codeTtlSeconds: 600 }
+        link: {
+            codeTtlSeconds: 600,
+            role: '1562157255816650802' // Role given by /link and removed by /unlink. The bot needs Manage Roles and its role must be above this one.
+        }
     },
     emojis: { // Custom emojis used in bot replies, format '<:name:id>' or '<a:name:id>' for animated ones.
         yes: '<:pw_yes:1561840403588841542>',

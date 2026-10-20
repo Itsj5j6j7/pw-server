@@ -23,6 +23,7 @@ module.exports = new ApplicationCommand({
      */
     run: async (client, interaction) => {
         const unlinked = store.unlink(interaction.user.id);
+        if (unlinked) await interaction.member.roles.remove(config.bridge.link.role).catch(() => null);
         await interaction.reply(unlinked
             ? notice(config.emojis.yes, 'Your Minecraft account has been **unlinked**.')
             : notice(config.emojis.no, 'You don\'t have a linked Minecraft account.'));

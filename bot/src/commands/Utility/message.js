@@ -205,13 +205,13 @@ Propwash is free and always will be. If you enjoy flying it and want to support 
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🎫  Open a Ticket`))
         .addSeparatorComponents(separator2)
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`
-Pick the category that fits your issue and a private channel will be created for you and the staff team.
+You can post bugs and ideas publicly by opening a post in <#${config.channels.bugsAndIdeas}>. If you'd rather talk in private, pick a category below and a private channel will be created for you and the staff team.
 
 ❓ Help
 > Questions about installing, controllers, flying or anything else in the mod. Check the FAQ and the in-game Flight School first.
 
 🐛 Bug
-> Something is broken or crashing. Include your Minecraft version, loader (Fabric/NeoForge), Propwash version, controller and, if you can, your log or crash report.
+> A bug you'd rather not post publicly, or one that needs private follow-up. Include your Minecraft version, loader (Fabric/NeoForge), Propwash version, controller and, if you can, your log or crash report.
 
 🚨 Report
 > Report a member or something that breaks the rules. Add screenshots or message links as evidence.`))

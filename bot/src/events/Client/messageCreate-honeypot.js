@@ -26,6 +26,12 @@ module.exports = new Event({
             return error(err);
         }
 
+        const logChannel = await client.channels.fetch(config.honeypot.logChannel).catch(() => null);
+        logChannel?.send({
+            content: `${action === 'ban' ? 'Banned' : 'Kicked'} ${member} (\`${member.id}\`) for writing in ${message.channel}.`,
+            allowedMentions: { parse: [] }
+        }).catch(() => { });
+
         const count = (client.database.get(COUNT_KEY) || 0) + 1;
         client.database.set(COUNT_KEY, count);
         await message.channel.messages.edit(client.database.get(MESSAGE_KEY), buildHoneypot(action, count)).catch(() => { });

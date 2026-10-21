@@ -20,7 +20,8 @@ const config = {
         adminRoles: ['1552947138693046312', '1560667470711365724', '1557121473263571004', '1561807668950073484'] // Roles allowed to enable/disable the FAQ auto-answer with /faq.
     },
     honeypot: {
-        channel: '1559122979344875601' // Trap channel for spam bots. Anyone writing here is kicked or banned while /honeypot is on (staff roles are ignored).
+        channel: '1559122979344875601', // Trap channel for spam bots. Anyone writing here is kicked or banned while /honeypot is on (staff roles are ignored).
+        logChannel: '1557117981895696484' // Each kick or ban is logged here, mentioning the user. Leave it like this (or empty) to disable the log.
     },
     bridge: { // HTTP API the Minecraft bridge mod reports to: server status, race results, records and /leaderboard. Runs as its own process (src/bridge/index.js).
         host: '127.0.0.1', // The mods run on the same machine: keep the API off the network.

@@ -1,4 +1,4 @@
-const { ChatInputCommandInteraction, ApplicationCommandOptionType, MessageFlags } = require("discord.js");
+const { ChatInputCommandInteraction, ApplicationCommandOptionType, ChannelType, MessageFlags } = require("discord.js");
 const DiscordBot = require("../../client/DiscordBot");
 const ApplicationCommand = require("../../structure/ApplicationCommand");
 const config = require("../../config");
@@ -19,6 +19,13 @@ module.exports = new ApplicationCommand({
                 type: ApplicationCommandOptionType.String,
                 required: true,
                 autocomplete: true
+            },
+            {
+                name: 'channel',
+                description: 'Channel to send it to (defaults to this one)',
+                type: ApplicationCommandOptionType.Channel,
+                channel_types: [ChannelType.GuildText, ChannelType.GuildAnnouncement, ChannelType.PublicThread, ChannelType.PrivateThread],
+                required: false
             }
         ]
     },
@@ -34,6 +41,7 @@ module.exports = new ApplicationCommand({
         if (!isStaff(interaction.member)) return replyError(interaction, 'You do not have permission to execute this command.');
 
         const id = interaction.options.getString('id', true);
+        const channel = interaction.options.getChannel('channel') ?? interaction.channel;
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         // Fetched on every use, so it always sends the message as it is saved right now.
@@ -46,12 +54,12 @@ module.exports = new ApplicationCommand({
         if (!data) return interaction.editReply(notice(config.emojis.no, `There is no message with id \`${id}\`.`));
 
         try {
-            await interaction.channel.send({ flags: MessageFlags.IsComponentsV2, ...toPayload(data) });
+            await channel.send({ flags: MessageFlags.IsComponentsV2, ...toPayload(data) });
         } catch (err) {
             return interaction.editReply(notice(config.emojis.no, `Discord rejected the message: ${err.message}`.slice(0, 1900)));
         }
 
-        await interaction.editReply(notice(config.emojis.yes, 'Message sent.'));
+        await interaction.editReply(notice(config.emojis.yes, `Message sent to ${channel}.`));
         setTimeout(() => interaction.deleteReply().catch(() => { }), 2000);
     }
 }).toJSON();

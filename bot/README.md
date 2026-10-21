@@ -4,7 +4,7 @@ Discord bot for the Propwash FPV community server, plus the HTTP API the [bridge
 
 | pm2 app | Entry | What it does |
 |---------|-------|--------------|
-| `propwash` | `src/index.js` | Discord bot: FAQ auto-answers, tickets, suggestions, honeypot, `/vc`, `/leaderboard`, `/link`, `/racedata`. |
+| `propwash` | `src/index.js` | Discord bot: FAQ auto-answers, tickets, suggestions, honeypot, `/vc`, `/msg` (sends a message saved by id in the assets.itofu.net builder), `/leaderboard`, `/link`, `/racedata`. |
 | `propwash-api` | `src/bridge/index.js` | HTTP API for the mod (port `3006`): server status, laps, records, `/link` codes. Posts to Discord over REST. |
 
 Either one can restart without the other. The API contract is in [Bridge API](#bridge-api) below.

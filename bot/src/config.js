@@ -99,12 +99,12 @@ const config = {
     tickets: {
         staffRoles: ['1552947138693046312', '1560667470711365724', '1557121473263571004', '1561807668950073484'], // Roles that can see every ticket and use the ticket commands.
         categories: { // Category where each ticket type is created.
-            help: 'Category ID',
-            bug: 'Category ID',
-            report: 'Category ID'
+            help: '1562434037417513064',
+            bug: '1562434037417513064',
+            report: '1562434037417513064'
         },
-        closedCategory: 'Category ID', // Closed tickets are moved here.
-        transcriptsChannel: 'Channel ID' // Transcripts are sent here when a ticket is closed.
+        closedCategory: '1562434168615608361', // Closed tickets are moved here.
+        transcriptsChannel: '1562433621191696384' // Transcripts are sent here when a ticket is closed.
     },
     voice: {
         category: '1561838832645578843', // /vc creates the temporary voice channels here. Keep the category private: each channel lets @everyone view and join, so the category only shows while there are channels. The bot needs View Channel, Manage Channels and Move Members.
@@ -112,11 +112,11 @@ const config = {
     },
     jobs: {
         adminRoles: ['1552947138693046312', '1560667470711365724', '1557121473263571004', '1561807668950073484'], // Roles that can use /job-application and see every applicant channel.
-        forum: 'Forum channel ID', // Job offers are posted here.
-        category: 'Category ID', // "I'm interested" creates the applicant channel (<id>-<name>) here. Keep it private: only the applicant and adminRoles get access.
+        forum: '1562434714625646652', // Job offers are posted here.
+        category: '1562434470022488165', // "I'm interested" creates the applicant channel (<id>-<name>) here. Keep it private: only the applicant and adminRoles get access.
         tags: { // Forum tag IDs applied to each post: available_tags of GET /channels/<forum id>.
-            time: { short: 'Tag ID', long: 'Tag ID', once: 'Tag ID' },
-            type: { moderation: 'Tag ID', content: 'Tag ID', builder: 'Tag ID', other: 'Tag ID' }
+            time: { short: '1562434770661548032', long: '1562434902920532098', once: '1562434949389230133' },
+            type: { moderation: '1562434983673602049', content: '1562435011636891701', builder: '1562435027495821352', other: '1562435038899863602' }
         }
     },
     users: {

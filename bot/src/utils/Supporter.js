@@ -6,7 +6,7 @@ const { error, info } = require('./Console');
 // Ko-fi's own Discord integration gives donors the supporter role; this gives the matching LuckPerms
 // group on the Minecraft servers to their linked account (/link), and takes it away with the role.
 
-const hasRole = (member) => member?.roles?.cache?.some((role) => role.name === config.supporter.roleName) ?? false;
+const hasRole = (member) => member?.roles?.cache?.has(config.supporter.roleId) ?? false;
 
 // add: true gives the group to that Minecraft account, false takes it away.
 const setRank = async (uuid, name, add) => {
@@ -29,7 +29,7 @@ const sync = async (member) => {
 // the bot was offline). Only adds: someone given the group by hand keeps it.
 const syncAll = async (client) => {
     for (const guild of client.guilds.cache.values()) {
-        const role = guild.roles.cache.find((r) => r.name === config.supporter.roleName);
+        const role = guild.roles.cache.get(config.supporter.roleId);
         if (!role) continue;
         const members = await guild.members.fetch().catch(() => null);
         for (const member of members?.values() ?? []) {

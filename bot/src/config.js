@@ -66,7 +66,7 @@ const config = {
         }
     },
     supporter: { // Ko-fi donors: Ko-fi's Discord integration gives them this role; their linked Minecraft account (/link) gets this LuckPerms group, over RCON (RCON_PORT and RCON_PASSWORD in .env; without them, nothing happens).
-        roleName: 'Ko-fi supporter',
+        roleId: '1554403775022637077',
         group: 'supporter'
     },
     emojis: { // Custom emojis used in bot replies, format '<:name:id>' or '<a:name:id>' for animated ones.

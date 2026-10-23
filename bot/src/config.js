@@ -65,6 +65,10 @@ const config = {
             role: '1562157255816650802' // Role given by /link and removed by /unlink. The bot needs Manage Roles and its role must be above this one.
         }
     },
+    supporter: { // Ko-fi donors: Ko-fi's Discord integration gives them this role; their linked Minecraft account (/link) gets this LuckPerms group, over RCON (RCON_PORT and RCON_PASSWORD in .env; without them, nothing happens).
+        roleName: 'Ko-fi supporter',
+        group: 'supporter'
+    },
     emojis: { // Custom emojis used in bot replies, format '<:name:id>' or '<a:name:id>' for animated ones.
         yes: '<:pw_yes:1561840403588841542>',
         no: '<:pw_no:1561840427680927834>',

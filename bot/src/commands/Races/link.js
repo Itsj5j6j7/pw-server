@@ -4,6 +4,7 @@ const ApplicationCommand = require("../../structure/ApplicationCommand");
 const config = require("../../config");
 const { notice } = require("../../utils/Notice");
 const store = require("../../bridge/store");
+const { sync } = require("../../utils/Supporter");
 
 module.exports = new ApplicationCommand({
     command: {
@@ -32,6 +33,7 @@ module.exports = new ApplicationCommand({
 
         store.link(entry.uuid, entry.name, interaction.user.id);
         await interaction.member.roles.add(config.bridge.link.role).catch(() => null);
+        await sync(interaction.member);
         await interaction.reply(notice(config.emojis.yes, `Linked to **${escapeMarkdown(entry.name)}**. Use \`/unlink\` to undo it.`));
     }
 }).toJSON();

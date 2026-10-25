@@ -4,7 +4,7 @@
 module.exports = {
     download_install: { // volatile: Modrinth release
         topic: 'Where to download or how to install the mod (CurseForge, Modrinth)',
-        answer: 'Download it from CurseForge: https://www.curseforge.com/minecraft/mc-mods/propwash-fpv (Minecraft 26.3, Fabric or NeoForge, Java 25). Easiest way for beginners: install the CurseForge app, search "propwash", install it and launch the game from the CurseForge app. The Modrinth page (https://modrinth.com/mod/propwash-fpv) is still in review.'
+        answer: 'Download it from CurseForge (latest: 0.5.2): https://www.curseforge.com/minecraft/mc-mods/propwash-fpv (Minecraft 26.3, Fabric or NeoForge, Java 25). Easiest way for beginners: install the CurseForge app, search "propwash", install it and launch the game from the CurseForge app. The Modrinth page (https://modrinth.com/mod/propwash-fpv) is still in review.'
     },
     versions: { // volatile: ports/backports
         topic: 'Required Minecraft version or loader, or ports/backports to 26.2, 1.21.1 or other versions',
@@ -30,6 +30,10 @@ module.exports = {
         topic: '"Throttle not low" message, how to arm or take off',
         answer: 'Hold the radio and right-click into the air, then ARM with your arm switch or Z (Y on QWERTZ). The throttle must be at the lowest position before arming. If it still says "Throttle not low" with the stick at the bottom:\n1. Update to 0.5.0 (the wizard used to store the throttle the wrong way round) and recalibrate with K > Receiver > Receiver Wizard.\n2. Relaunch Minecraft, disconnect/reconnect the controller and recalibrate.'
     },
+    arm_again_in_air: {
+        topic: 'Disarmed in the air and cannot arm again, arm button does nothing, arming from any angle or upside down',
+        answer: 'Arming only works while the drone is tilted less than the max arm angle, 25 degrees by default. Set it to 180 in K > Configuration > Arming > Max arm angle so you can arm from any angle, even in the air or upside down. The throttle must still be down: put it at the bottom, then press your arm switch or Z (Y on QWERTZ).'
+    },
     flight_modes: {
         topic: 'How to switch flight mode (Acro, Angle, Horizon), R key not switching, cannot flip or do a 360',
         answer: 'Keys: R cycles the modes, Numpad 1 = Acro, Numpad 2 = Angle, Numpad 3 = Horizon. On a radio, AUX2 is the mode switch by default (low Acro, middle Horizon, high Angle); you can map switches by hand in K > Modes. Flips and rolls need Acro (or Horizon at full stick). Keyboard flight starts in Angle mode. The bug where mode keys sometimes didn\'t switch is fixed in 0.5.0.'
@@ -40,7 +44,7 @@ module.exports = {
     },
     camera_angle: {
         topic: 'How to change the drone camera tilt / uptilt angle',
-        answer: 'Shift + right-click the placed drone without a battery in hand to open the drone\'s service menu - the camera angle is saved per drone there.'
+        answer: 'Place the drone on the ground, then Shift + right-click it to open its service menu - the camera angle is saved per drone there.'
     },
     goggles: {
         topic: 'Whether goggles are needed, using real FPV goggles, wrong goggles or NO SIGNAL, or how to see through the drone',
@@ -74,9 +78,9 @@ module.exports = {
         topic: 'Getting a lost drone back, return to home (RTH), GPS Rescue or teleporting the drone',
         answer: 'GPS Rescue climbs to a safe height, flies home around trees and buildings and lands - set it up in K > Rescue. It also brings the drone home on its own if you stop flying, leave the game or lose the signal (servers can turn that off). Without a remote connection, right-clicking into the air connects to the nearest drone you bound within 128 blocks. The drone is an entity, so you can also use /tp. Since 0.5.1 drones are tagged with their owner, e.g. `/tp @e[type=propwash:drone,tag=pw_owner_<name>] @s`.'
     },
-    servers: { // volatile: update when a public server exists
-        topic: 'Whether it works in multiplayer or on servers, or if there is an official, community or racing server',
-        answer: 'Propwash works in multiplayer: install the same version on the server and on every client (0.5.0 and 0.5.1 can mix, but 0.5.2 can\'t join a 0.5.0/0.5.1 server or the other way round). Add-ons the server has (like Just More Parts) are needed by everyone; add-ons only you have just stay off there. The server loads chunks around your drone, so render distance doesn\'t hold you back, and press F7 to watch other pilots\' video. There is no official public server yet, but several members are organising a community server - watch the announcements. A "Propwash: Server" add-on is planned for 0.6.0.'
+    servers: { // volatile: server IP and versions
+        topic: 'Whether it works in multiplayer or on servers, the server IP or address, or if there is an official, community or racing server',
+        answer: 'Propwash works in multiplayer: install the same version on the server and on every client (0.5.0 and 0.5.1 can mix, but 0.5.2 can\'t join a 0.5.0/0.5.1 server or the other way round). Add-ons the server has (like Just More Parts) are needed by everyone; add-ons only you have just stay off there. The server loads chunks around your drone, so render distance doesn\'t hold you back, and press F7 to watch other pilots\' video. The official public server is mc.propwashfpv.com. A "Propwash: Server" add-on is planned for 0.6.0.'
     },
     racing: {
         topic: 'How to set up race gates, courses, lap timing or leaderboards',

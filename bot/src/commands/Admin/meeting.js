@@ -4,7 +4,7 @@ const ApplicationCommand = require("../../structure/ApplicationCommand");
 const config = require("../../config");
 const { notice } = require("../../utils/Notice");
 const { replyError } = require("../../utils/Tickets");
-const { isJobAdmin, applicantOf } = require("../../utils/Jobs");
+const { isJobAdmin, applicantOf, scheduleMeeting } = require("../../utils/Jobs");
 
 module.exports = new ApplicationCommand({
     command: {
@@ -37,7 +37,7 @@ module.exports = new ApplicationCommand({
         const at = Number(interaction.options.getString('timestamp', true).match(/\d+/)?.[0]);
         if (!(at * 1000 > Date.now())) return replyError(interaction, 'The timestamp must be a future Unix timestamp in seconds.');
 
-        client.database.set(`job-meetings.${interaction.channelId}`, { at, userId });
+        scheduleMeeting(client, interaction.channelId, { at, userId });
 
         await interaction.channel.send({
             flags: MessageFlags.IsComponentsV2,

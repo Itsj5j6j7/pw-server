@@ -33,18 +33,23 @@ const buildJob = ({ title, description, time, type }) => {
         .addSeparatorComponents(separator);
 };
 
-// Applicant of an application channel, from job-applications.<thread>.<user> = channelId.
-const applicantOf = (client, channelId) => Object.values(client.database.get('job-applications') || {})
-    .flatMap(Object.entries).find(([, id]) => id === channelId)?.[0];
+// quick-yaml.db keys are flat ("job-applications.<thread>.<user>" is one key), so search them by prefix.
+const applicantOf = (client, channelId) => client.database.entries()
+    .find(([key, id]) => key.startsWith('job-applications.') && id === channelId)?.[0].split('.')[2];
 
 const voiceAccess = { ViewChannel: true, Connect: true, Speak: true };
 
-// job-meetings.<application channel> = { at (unix seconds), userId }. Checked every 30 s so it survives restarts.
+// "job-meetings" = { <application channel>: { at (unix seconds), userId } }. Checked every 30 s so it survives restarts.
+const MEETINGS = 'job-meetings';
+
+const scheduleMeeting = (client, channelId, meeting) => client.database.set(MEETINGS, { ...client.database.get(MEETINGS), [channelId]: meeting });
+
 const startMeetings = (client) => setInterval(async () => {
-    const meetings = client.database.get('job-meetings') || {};
+    const meetings = client.database.get(MEETINGS) || {};
     for (const [channelId, { at, userId }] of Object.entries(meetings)) {
         if (at * 1000 > Date.now()) continue;
-        client.database.delete(`job-meetings.${channelId}`);
+        const { [channelId]: _, ...rest } = client.database.get(MEETINGS);
+        client.database.set(MEETINGS, rest);
 
         try {
             const channel = await client.channels.fetch(channelId).catch(() => null);
@@ -70,4 +75,4 @@ const startMeetings = (client) => setInterval(async () => {
     }
 }, 30000);
 
-module.exports = { TIMES, TYPES, RULES, MAX_QUESTIONS, MAX_QUESTION_LENGTH, isJobAdmin, buildJob, applicantOf, startMeetings };
+module.exports = { TIMES, TYPES, RULES, MAX_QUESTIONS, MAX_QUESTION_LENGTH, isJobAdmin, buildJob, applicantOf, scheduleMeeting, startMeetings };

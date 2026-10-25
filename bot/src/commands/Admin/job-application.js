@@ -1,9 +1,9 @@
-const { ChatInputCommandInteraction } = require("discord.js");
+const { ChatInputCommandInteraction, ApplicationCommandOptionType } = require("discord.js");
 const DiscordBot = require("../../client/DiscordBot");
 const ApplicationCommand = require("../../structure/ApplicationCommand");
 const config = require("../../config");
 const { notice } = require("../../utils/Notice");
-const { TIMES, TYPES, isJobAdmin } = require("../../utils/Jobs");
+const { TIMES, TYPES, MAX_QUESTIONS, MAX_QUESTION_LENGTH, isJobAdmin } = require("../../utils/Jobs");
 
 const radio = (customId, labels) => ({
     type: 21,
@@ -16,7 +16,14 @@ module.exports = new ApplicationCommand({
         name: 'job-application',
         description: 'Post a job offer in the job applications forum',
         type: 1,
-        contexts: [0]
+        contexts: [0],
+        options: [{
+            name: 'id',
+            description: 'One word, used to name the applicant channels (e.g. mcmod)',
+            type: ApplicationCommandOptionType.String,
+            max_length: 20,
+            required: true
+        }]
     },
     options: {
         cooldown: 5000
@@ -36,15 +43,12 @@ module.exports = new ApplicationCommand({
             }, 2000);
         }
 
+        const id = interaction.options.getString('id', true).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'job';
+
         await interaction.showModal({
-            custom_id: 'job_create',
+            custom_id: `job_create:${id}`,
             title: 'New job offer',
             components: [{
-                type: 18,
-                label: 'ID',
-                description: 'One word, used to name the applicant channels',
-                component: { type: 4, custom_id: 'id', style: 1, min_length: 1, max_length: 20, placeholder: 'builder', required: true }
-            }, {
                 type: 18,
                 label: 'Title',
                 component: { type: 4, custom_id: 'title', style: 1, min_length: 1, max_length: 100, required: true }
@@ -60,6 +64,11 @@ module.exports = new ApplicationCommand({
                 type: 18,
                 label: 'Type',
                 component: radio('type', TYPES)
+            }, {
+                type: 18,
+                label: 'Questions',
+                description: `Asked when applying. One per line, up to ${MAX_QUESTIONS}, ${MAX_QUESTION_LENGTH} characters each`,
+                component: { type: 4, custom_id: 'questions', style: 2, max_length: 400, required: false }
             }]
         });
     }

@@ -25,7 +25,7 @@ class ComponentsListener {
 
             try {
                 if (interaction.isButton()) {
-                    // "prefix:args" ids fall back to the component registered as "prefix".
+                    // "prefix:args" ids fall back to the component registered as "prefix" (also for modals).
                     const component = client.collection.components.buttons.get(interaction.customId) ?? client.collection.components.buttons.get(interaction.customId.split(':')[0]);
 
                     if (!component) return;
@@ -58,7 +58,7 @@ class ComponentsListener {
                 }
 
                 if (interaction.isModalSubmit()) {
-                    const component = client.collection.components.modals.get(interaction.customId);
+                    const component = client.collection.components.modals.get(interaction.customId) ?? client.collection.components.modals.get(interaction.customId.split(':')[0]);
 
                     if (!component) return;
 

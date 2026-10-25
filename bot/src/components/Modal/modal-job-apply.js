@@ -1,4 +1,4 @@
-const { ModalSubmitInteraction, MessageFlags, ChannelType, TextDisplayBuilder, SeparatorBuilder } = require("discord.js");
+const { ModalSubmitInteraction, MessageFlags, ChannelType, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder } = require("discord.js");
 const DiscordBot = require("../../client/DiscordBot");
 const Component = require("../../structure/Component");
 const config = require("../../config");
@@ -40,6 +40,17 @@ module.exports = new Component({
       components: [buildJob(job)
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`<@${interaction.user.id}>, what would you bring to this role?`))]
     });
+
+    // Separate message: the job above can already take most of the 4000 characters a message allows.
+    if (job.questions?.length) {
+      await channel.send({
+        flags: MessageFlags.IsComponentsV2,
+        components: [new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(job.questions
+          .map((question, i) => `**${question}**\n${interaction.fields.getTextInputValue(`q${i}`)}`)
+          .join('\n\n')))],
+        allowedMentions: { parse: [] }
+      });
+    }
 
     await interaction.editReply(notice(config.emojis.yes, `Application channel created: <#${channel.id}>`));
   }

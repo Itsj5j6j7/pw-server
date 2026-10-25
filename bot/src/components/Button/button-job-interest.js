@@ -15,7 +15,8 @@ module.exports = new Component({
    * @param {ButtonInteraction} interaction
    */
   run: async (client, interaction) => {
-    if (!client.database.get(`jobs.${interaction.channelId}`)) return replyError(interaction, 'This job offer no longer exists.');
+    const job = client.database.get(`jobs.${interaction.channelId}`);
+    if (!job) return replyError(interaction, 'This job offer no longer exists.');
 
     const channelId = client.database.get(`job-applications.${interaction.channelId}.${interaction.user.id}`);
     if (channelId && await interaction.guild.channels.fetch(channelId).catch(() => null)) {
@@ -25,7 +26,12 @@ module.exports = new Component({
     await interaction.showModal({
       custom_id: 'job_apply',
       title: 'Job application',
-      components: [{
+      // A label holds 45 characters; longer questions go in the description.
+      components: [...(job.questions ?? []).map((question, i) => ({
+        type: 18,
+        ...(question.length <= 45 ? { label: question } : { label: `Question ${i + 1}`, description: question }),
+        component: { type: 4, custom_id: `q${i}`, style: 2, max_length: 1000, required: true }
+      })), {
         type: 10,
         content: RULES
       }, {

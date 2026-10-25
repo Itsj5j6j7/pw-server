@@ -14,6 +14,10 @@ const RULES = `**Before you apply, please read:**
 - **Content stays credited.** Anything you make (videos, builds, trailers) may be used by the project, and we'll credit you whenever it is.
 - **Staff decides.** Applying doesn't guarantee a spot, and a role can be removed at any time if the above isn't respected.`;
 
+// The apply modal fits 5 components: rules text + checkbox leave room for 3 questions. A label description holds 100 characters.
+const MAX_QUESTIONS = 3;
+const MAX_QUESTION_LENGTH = 100;
+
 const isJobAdmin = (member) => config.jobs.adminRoles.some((roleId) => member.roles.cache.has(roleId));
 
 const buildJob = ({ title, description, time, type }) => {
@@ -28,4 +32,4 @@ const buildJob = ({ title, description, time, type }) => {
         .addSeparatorComponents(separator);
 };
 
-module.exports = { TIMES, TYPES, RULES, isJobAdmin, buildJob };
+module.exports = { TIMES, TYPES, RULES, MAX_QUESTIONS, MAX_QUESTION_LENGTH, isJobAdmin, buildJob };

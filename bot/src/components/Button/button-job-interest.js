@@ -26,10 +26,11 @@ module.exports = new Component({
     await interaction.showModal({
       custom_id: 'job_apply',
       title: 'Job application',
-      // A label holds 45 characters; longer questions go in the description.
+      // A label holds only 45 characters, so the question goes in the description.
       components: [...(job.questions ?? []).map((question, i) => ({
         type: 18,
-        ...(question.length <= 45 ? { label: question } : { label: `Question ${i + 1}`, description: question }),
+        label: `Question ${i + 1}`,
+        description: question,
         component: { type: 4, custom_id: `q${i}`, style: 2, max_length: 1000, required: true }
       })), {
         type: 10,

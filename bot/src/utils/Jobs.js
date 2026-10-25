@@ -39,37 +39,59 @@ const applicantOf = (client, channelId) => client.database.entries()
 
 const voiceAccess = { ViewChannel: true, Connect: true, Speak: true };
 
-// "job-meetings" = { <application channel>: { at (unix seconds), userId } }. Checked every 30 s so it survives restarts.
+// "job-meetings" = { <application channel>: { at (unix seconds), userId, voiceId (once created) } }. Checked every 30 s so it survives restarts.
+// The voice channel is created EARLY seconds before `at`, with a heads-up; at `at` the start is announced and the entry removed.
 const MEETINGS = 'job-meetings';
+const EARLY = 15 * 60;
 
 const scheduleMeeting = (client, channelId, meeting) => client.database.set(MEETINGS, { ...client.database.get(MEETINGS), [channelId]: meeting });
 
+const saveMeeting = (client, channelId, meeting) => {
+    const { [channelId]: _, ...rest } = client.database.get(MEETINGS) || {};
+    client.database.set(MEETINGS, meeting ? { ...rest, [channelId]: meeting } : rest);
+};
+
+const announce = (channel, content) => channel.send({
+    flags: MessageFlags.IsComponentsV2,
+    components: [new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(content))]
+});
+
 const startMeetings = (client) => setInterval(async () => {
     const meetings = client.database.get(MEETINGS) || {};
-    for (const [channelId, { at, userId }] of Object.entries(meetings)) {
-        if (at * 1000 > Date.now()) continue;
-        const { [channelId]: _, ...rest } = client.database.get(MEETINGS);
-        client.database.set(MEETINGS, rest);
+    for (const [channelId, meeting] of Object.entries(meetings)) {
+        const { at, userId } = meeting;
+        const now = Date.now() / 1000;
+        if (now < at - EARLY) continue;
 
         try {
             const channel = await client.channels.fetch(channelId).catch(() => null);
-            if (!channel) continue;
-
-            const voice = await channel.guild.channels.create({
-                name: `🎤│${channel.name}`,
-                type: ChannelType.GuildVoice,
-                parent: channel.parentId
-            });
-            await voice.permissionOverwrites.edit(userId, voiceAccess);
-            for (const roleId of config.jobs.adminRoles) {
-                await voice.permissionOverwrites.edit(roleId, voiceAccess);
+            if (!channel) {
+                saveMeeting(client, channelId, null);
+                continue;
             }
 
-            await channel.send({
-                flags: MessageFlags.IsComponentsV2,
-                components: [new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(`<@${userId}>, the meeting is starting: <#${voice.id}>`))]
-            });
+            let voiceId = meeting.voiceId;
+            if (!voiceId) {
+                const voice = await channel.guild.channels.create({
+                    name: `🎤│${channel.name}`,
+                    type: ChannelType.GuildVoice,
+                    parent: channel.parentId
+                });
+                voiceId = voice.id;
+                saveMeeting(client, channelId, { ...meeting, voiceId });
+                await voice.permissionOverwrites.edit(userId, voiceAccess);
+                for (const roleId of config.jobs.adminRoles) {
+                    await voice.permissionOverwrites.edit(roleId, voiceAccess);
+                }
+                if (now < at) await announce(channel, `@here the meeting starts in 15 minutes (<t:${at}:R>): <#${voiceId}>`);
+            }
+
+            if (now >= at) {
+                saveMeeting(client, channelId, null);
+                await announce(channel, `@here the meeting is starting now: <#${voiceId}>`);
+            }
         } catch (err) {
+            saveMeeting(client, channelId, null);
             error(`Meeting in ${channelId}: ${err.message}`);
         }
     }

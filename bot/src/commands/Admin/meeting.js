@@ -41,7 +41,7 @@ module.exports = new ApplicationCommand({
 
         await interaction.channel.send({
             flags: MessageFlags.IsComponentsV2,
-            components: [new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(`📅 A meeting will be held on <t:${at}:F> (<t:${at}:R>). A voice channel will be created here at that time.`))]
+            components: [new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(`📅 A meeting will be held on <t:${at}:F> (<t:${at}:R>). A voice channel will be created here 15 minutes before.`))]
         });
 
         await interaction.reply(notice(config.emojis.yes, 'Meeting scheduled.'));

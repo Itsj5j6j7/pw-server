@@ -78,9 +78,13 @@ module.exports = {
         topic: 'Getting a lost drone back, return to home (RTH), GPS Rescue or teleporting the drone',
         answer: 'GPS Rescue climbs to a safe height, flies home around trees and buildings and lands - set it up in K > Rescue. It also brings the drone home on its own if you stop flying, leave the game or lose the signal (servers can turn that off). Without a remote connection, right-clicking into the air connects to the nearest drone you bound within 128 blocks. The drone is an entity, so you can also use /tp. Since 0.5.1 drones are tagged with their owner, e.g. `/tp @e[type=propwash:drone,tag=pw_owner_<name>] @s`.'
     },
-    servers: { // volatile: server IP and versions
-        topic: 'Whether it works in multiplayer or on servers, the server IP or address, or if there is an official, community or racing server',
-        answer: 'Propwash works in multiplayer: install the same version on the server and on every client (0.5.0 and 0.5.1 can mix, but 0.5.2 can\'t join a 0.5.0/0.5.1 server or the other way round). Add-ons the server has (like Just More Parts) are needed by everyone; add-ons only you have just stay off there. The server loads chunks around your drone, so render distance doesn\'t hold you back, and press F7 to watch other pilots\' video. The official public server is mc.propwashfpv.com. A "Propwash: Server" add-on is planned for 0.6.0.'
+    servers: { // volatile: versions
+        topic: 'Whether it works in multiplayer or on servers, or if there is an official, community or racing server',
+        answer: 'Propwash works in multiplayer: install the same version on the server and on every client (0.5.0 and 0.5.1 can mix, but 0.5.2 can\'t join a 0.5.0/0.5.1 server or the other way round). Add-ons the server has (like Just More Parts) are needed by everyone; add-ons only you have just stay off there. The server loads chunks around your drone, so render distance doesn\'t hold you back, and press F7 to watch other pilots\' video. A "Propwash: Server" add-on is planned for 0.6.0.'
+    },
+    official_server_ip: { // volatile: server address
+        topic: 'The official Propwash Minecraft server IP or address, or how to join the official server',
+        answer: 'The official public Propwash server is mc.propwashfpv.com.'
     },
     racing: {
         topic: 'How to set up race gates, courses, lap timing or leaderboards',

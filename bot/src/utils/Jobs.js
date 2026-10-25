@@ -1,5 +1,6 @@
-const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize } = require('discord.js');
+const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, ChannelType, MessageFlags } = require('discord.js');
 const config = require('../config');
+const { error } = require('./Console');
 
 // Keys match config.jobs.tags.time / config.jobs.tags.type.
 const TIMES = { short: 'Short term', long: 'Long term', once: 'One time' };
@@ -32,4 +33,41 @@ const buildJob = ({ title, description, time, type }) => {
         .addSeparatorComponents(separator);
 };
 
-module.exports = { TIMES, TYPES, RULES, MAX_QUESTIONS, MAX_QUESTION_LENGTH, isJobAdmin, buildJob };
+// Applicant of an application channel, from job-applications.<thread>.<user> = channelId.
+const applicantOf = (client, channelId) => Object.values(client.database.get('job-applications') || {})
+    .flatMap(Object.entries).find(([, id]) => id === channelId)?.[0];
+
+const voiceAccess = { ViewChannel: true, Connect: true, Speak: true };
+
+// job-meetings.<application channel> = { at (unix seconds), userId }. Checked every 30 s so it survives restarts.
+const startMeetings = (client) => setInterval(async () => {
+    const meetings = client.database.get('job-meetings') || {};
+    for (const [channelId, { at, userId }] of Object.entries(meetings)) {
+        if (at * 1000 > Date.now()) continue;
+        client.database.delete(`job-meetings.${channelId}`);
+
+        try {
+            const channel = await client.channels.fetch(channelId).catch(() => null);
+            if (!channel) continue;
+
+            const voice = await channel.guild.channels.create({
+                name: `🎤│${channel.name}`,
+                type: ChannelType.GuildVoice,
+                parent: channel.parentId
+            });
+            await voice.permissionOverwrites.edit(userId, voiceAccess);
+            for (const roleId of config.jobs.adminRoles) {
+                await voice.permissionOverwrites.edit(roleId, voiceAccess);
+            }
+
+            await channel.send({
+                flags: MessageFlags.IsComponentsV2,
+                components: [new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(`<@${userId}>, the meeting is starting: <#${voice.id}>`))]
+            });
+        } catch (err) {
+            error(`Meeting in ${channelId}: ${err.message}`);
+        }
+    }
+}, 30000);
+
+module.exports = { TIMES, TYPES, RULES, MAX_QUESTIONS, MAX_QUESTION_LENGTH, isJobAdmin, buildJob, applicantOf, startMeetings };

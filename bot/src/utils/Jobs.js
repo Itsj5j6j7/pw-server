@@ -44,10 +44,12 @@ const voiceAccess = { ViewChannel: true, Connect: true, Speak: true };
 const MEETINGS = 'job-meetings';
 const EARLY = 15 * 60;
 
-const scheduleMeeting = (client, channelId, meeting) => client.database.set(MEETINGS, { ...client.database.get(MEETINGS), [channelId]: meeting });
+const getMeetings = (client) => client.database.get(MEETINGS) || {};
+
+const scheduleMeeting = (client, channelId, meeting) => client.database.set(MEETINGS, { ...getMeetings(client), [channelId]: meeting });
 
 const saveMeeting = (client, channelId, meeting) => {
-    const { [channelId]: _, ...rest } = client.database.get(MEETINGS) || {};
+    const { [channelId]: _, ...rest } = getMeetings(client);
     client.database.set(MEETINGS, meeting ? { ...rest, [channelId]: meeting } : rest);
 };
 
@@ -57,8 +59,7 @@ const announce = (channel, content) => channel.send({
 });
 
 const startMeetings = (client) => setInterval(async () => {
-    const meetings = client.database.get(MEETINGS) || {};
-    for (const [channelId, meeting] of Object.entries(meetings)) {
+    for (const [channelId, meeting] of Object.entries(getMeetings(client))) {
         const { at, userId } = meeting;
         const now = Date.now() / 1000;
         if (now < at - EARLY) continue;
@@ -97,4 +98,4 @@ const startMeetings = (client) => setInterval(async () => {
     }
 }, 30000);
 
-module.exports = { TIMES, TYPES, RULES, MAX_QUESTIONS, MAX_QUESTION_LENGTH, isJobAdmin, buildJob, applicantOf, scheduleMeeting, startMeetings };
+module.exports = { TIMES, TYPES, RULES, MAX_QUESTIONS, MAX_QUESTION_LENGTH, isJobAdmin, buildJob, applicantOf, getMeetings, scheduleMeeting, announce, startMeetings };

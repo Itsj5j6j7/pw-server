@@ -1,4 +1,4 @@
-const { ModalSubmitInteraction, MessageFlags, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, FileBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { ModalSubmitInteraction, MessageFlags, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const DiscordBot = require("../../client/DiscordBot");
 const Component = require("../../structure/Component");
 const config = require("../../config");
@@ -21,39 +21,34 @@ module.exports = new Component({
       return interaction.reply(notice(config.emojis.no, 'You do not have permission to do this.'));
     }
 
+    const links = interaction.fields.getTextInputValue('links').split('\n').map((line) => line.trim()).filter(Boolean);
+    const invalid = links.find((link) => !/^https?:$/.test(URL.parse(link)?.protocol));
+    if (invalid) return interaction.reply(notice(config.emojis.no, `Not a valid link: ${invalid}`));
+
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const version = interaction.fields.getTextInputValue('version').trim();
     const description = interaction.fields.getTextInputValue('description');
-    const file = interaction.fields.getUploadedFiles('file', true).first();
-    // attachment:// only matches names Discord keeps as they are.
-    const fileName = file.name.replace(/[^\w.-]+/g, '_');
+    // Labelled with the file name from the URL: propwash-fabric-26.3-0.6.0-dev.10-c4362030.jar
+    const downloads = links.map((link) => `📦 [\`${decodeURIComponent(new URL(link).pathname.split('/').pop()) || link}\`](${link})`);
 
-    // The modal upload is temporary: the bot downloads it and re-uploads it to the post, where Discord keeps it.
     const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large);
     const versionsForum = await client.channels.fetch(config.playtest.versionsForum);
-    let thread;
-    try {
-      thread = await versionsForum.threads.create({
-        name: version,
-        message: {
-          flags: MessageFlags.IsComponentsV2,
-          files: [{ attachment: file.url, name: fileName }],
-          components: [new ContainerBuilder()
-            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🧪 ${version}`))
-            .addSeparatorComponents(separator)
-            .addTextDisplayComponents(new TextDisplayBuilder().setContent(description))
-            .addSeparatorComponents(separator)
-            .addFileComponents(new FileBuilder().setURL(`attachment://${fileName}`))
-            .addActionRowComponents(new ActionRowBuilder().addComponents(
-              new ButtonBuilder().setCustomId('playtest_feedback').setLabel('Give feedback').setEmoji('📝').setStyle(ButtonStyle.Primary)
-            ))]
-        }
-      });
-    } catch (err) {
-      error(`Playtest version ${version}: ${err.message}`);
-      return interaction.editReply(notice(config.emojis.no, `Could not post the version: ${err.message} (a bot can only upload up to this server's upload limit).`));
-    }
+    const thread = await versionsForum.threads.create({
+      name: version,
+      message: {
+        flags: MessageFlags.IsComponentsV2,
+        components: [new ContainerBuilder()
+          .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🧪 ${version}`))
+          .addSeparatorComponents(separator)
+          .addTextDisplayComponents(new TextDisplayBuilder().setContent(description))
+          .addSeparatorComponents(separator)
+          .addTextDisplayComponents(new TextDisplayBuilder().setContent(downloads.join('\n')))
+          .addActionRowComponents(new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('playtest_feedback').setLabel('Give feedback').setEmoji('📝').setStyle(ButtonStyle.Primary)
+          ))]
+      }
+    });
 
     // Drop the oldest version tags (only the ones the bot made) so the new one fits.
     const feedbackForum = await client.channels.fetch(config.playtest.feedbackForum);

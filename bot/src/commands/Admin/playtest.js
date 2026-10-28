@@ -40,8 +40,9 @@ module.exports = new ApplicationCommand({
                 component: { type: 4, custom_id: 'description', style: 2, min_length: 1, max_length: 3000, required: true }
             }, {
                 type: 18,
-                label: 'File',
-                component: { type: 19, custom_id: 'file', min_values: 1, max_values: 1, required: true }
+                label: 'Downloads',
+                description: 'One link per line (jar, zip...), shown in the same order',
+                component: { type: 4, custom_id: 'links', style: 2, min_length: 1, max_length: 2000, required: true }
             }]
         });
     }

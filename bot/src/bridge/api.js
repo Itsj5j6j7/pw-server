@@ -143,6 +143,38 @@ const limited = (key, max) => {
 };
 
 const sha256 = (value) => crypto.createHash('sha256').update(value).digest();
+
+// Ko-fi's webhook (Ko-fi > Settings > API, URL https://<tunnel host>/kofi): a form field "data" with the
+// payment as JSON, and the page's verification token, KOFI_TOKEN in .env. Every config.supporter.eurosPerMonth
+// euros of a donation or membership payment is a month of supporter time for the Discord account the
+// donor connected on Ko-fi; the bot (utils/Supporter) gives the role and posts each payment for staff.
+const kofi = async (req, res) => {
+    const wait = limited('kofi', 60);
+    if (wait) return fail(res, 429, 'rate_limited', 'Too many requests.', { 'Retry-After': wait });
+    const raw = await readBody(req);
+    if (raw === null) return fail(res, 413, 'body_too_large', 'Body too large.');
+    let data;
+    try {
+        data = JSON.parse(new URLSearchParams(raw).get('data') ?? '');
+    } catch {
+        return fail(res, 400, 'invalid_body', 'Expected a form field "data" with JSON.');
+    }
+    const token = process.env.KOFI_TOKEN ?? '';
+    if (!token || typeof data?.verification_token !== 'string'
+        || !crypto.timingSafeEqual(sha256(data.verification_token), sha256(token))) {
+        return fail(res, 401, 'unauthorized', 'Invalid verification token.');
+    }
+    const counts = ['Donation', 'Subscription'].includes(data.type) && data.currency === 'EUR';
+    const months = counts ? Math.floor(Number(data.amount) / (config.supporter.eurosPerMonth ?? 5)) : 0;
+    const discordId = /^\d{15,25}$/.test(data.discord_userid ?? '') ? data.discord_userid : null;
+    const payment = {
+        id: String(data.kofi_transaction_id || data.message_id), discordId, name: String(data.from_name ?? '?').slice(0, 100),
+        amount: String(data.amount), currency: String(data.currency), type: String(data.type), months,
+        message: data.is_public === false ? null : (data.message ? String(data.message).slice(0, 500) : null)
+    };
+    if (store.addKofiPayment(payment) && discordId && months > 0) store.addSupporterMonths(discordId, months);
+    send(res, 200, { ok: true });
+};
 // The key identifies the server. Comparing hashes keeps timingSafeEqual happy with keys of any length.
 const keyed = servers.list.filter((server) => server.key).map((server) => ({ server, hash: sha256(server.key) }));
 const authenticate = (req) => {
@@ -169,6 +201,7 @@ const start = () => {
     const httpServer = http.createServer(async (req, res) => {
         try {
             const path = req.url.split('?')[0];
+            if (req.method === 'POST' && path === '/kofi') return await kofi(req, res);
             const route = ROUTES[`${req.method} ${path}`];
             if (!route) return fail(res, 404, 'not_found', 'Unknown route.');
 

@@ -4,6 +4,7 @@ const Component = require("../../structure/Component");
 const config = require("../../config");
 const { notice } = require("../../utils/Notice");
 const { error } = require("../../utils/Console");
+const { toPayload } = require("../../utils/Messages");
 
 // A forum holds 20 tags at most.
 const MAX_TAGS = 20;
@@ -29,26 +30,41 @@ module.exports = new Component({
 
     const version = interaction.fields.getTextInputValue('version').trim();
     const description = interaction.fields.getTextInputValue('description');
-    // Labelled with the file name from the URL: propwash-fabric-26.3-0.6.0-dev.10-c4362030.jar
-    const downloads = links.map((link) => `📦 [\`${decodeURIComponent(new URL(link).pathname.split('/').pop()) || link}\`](${link})`);
-
     const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large);
+    const post = (downloads) => {
+      const container = new ContainerBuilder()
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🧪 ${version}`))
+        .addSeparatorComponents(separator)
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(description))
+        .addSeparatorComponents(separator)
+        .toJSON();
+      container.components.push(
+        ...downloads,
+        separator.toJSON(),
+        new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId('playtest_feedback').setLabel('Give feedback').setEmoji('📝').setStyle(ButtonStyle.Primary)
+        ).toJSON()
+      );
+      return [container];
+    };
+
+    // File components (raw JSON: discord.js's FileBuilder only takes attachment:// URLs) are downloaded and attached by toPayload.
+    // Over the server's upload limit (or any download error) the post falls back to plain links.
     const versionsForum = await client.channels.fetch(config.playtest.versionsForum);
-    const thread = await versionsForum.threads.create({
-      name: version,
-      message: {
-        flags: MessageFlags.IsComponentsV2,
-        components: [new ContainerBuilder()
-          .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🧪 ${version}`))
-          .addSeparatorComponents(separator)
-          .addTextDisplayComponents(new TextDisplayBuilder().setContent(description))
-          .addSeparatorComponents(separator)
-          .addTextDisplayComponents(new TextDisplayBuilder().setContent(downloads.join('\n')))
-          .addActionRowComponents(new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('playtest_feedback').setLabel('Give feedback').setEmoji('📝').setStyle(ButtonStyle.Primary)
-          ))]
-      }
-    });
+    let thread;
+    try {
+      thread = await versionsForum.threads.create({
+        name: version,
+        message: { flags: MessageFlags.IsComponentsV2, ...toPayload({ components: post(links.map((url) => ({ type: 13, file: { url } }))) }) }
+      });
+    } catch (err) {
+      error(`Playtest ${version}: files not attached, posting links instead: ${err.message}`);
+      const text = links.map((link) => `📦 [\`${decodeURIComponent(new URL(link).pathname.split('/').pop()) || link}\`](${link})`).join('\n');
+      thread = await versionsForum.threads.create({
+        name: version,
+        message: { flags: MessageFlags.IsComponentsV2, components: post([new TextDisplayBuilder().setContent(text).toJSON()]) }
+      });
+    }
 
     // Drop the oldest version tags (only the ones the bot made) so the new one fits.
     const feedbackForum = await client.channels.fetch(config.playtest.feedbackForum);

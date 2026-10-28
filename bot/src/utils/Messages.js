@@ -17,7 +17,7 @@ const toPayload = (data) => {
     const files = [];
     const walk = (component) => {
         if (component.type === 13 && /^https?:\/\//.test(component.file?.url ?? '')) {
-            const name = `${files.length}-${component.file.url.split('/').pop().split('?')[0] || 'file'}`;
+            const name = component.file.url.split('/').pop().split('?')[0] || 'file';
             files.push({ attachment: component.file.url, name });
             component.file.url = `attachment://${name}`;
         }

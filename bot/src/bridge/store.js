@@ -30,7 +30,38 @@ db.exec(`
         code TEXT PRIMARY KEY, uuid TEXT NOT NULL UNIQUE, name TEXT NOT NULL, expires_at INTEGER NOT NULL
     );
     CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+    -- Minecraft accounts the bot gave the supporter group (utils/Supporter), so it only ever takes back its own.
+    CREATE TABLE IF NOT EXISTS supporter_ranks (uuid TEXT PRIMARY KEY, given_at INTEGER NOT NULL);
+    -- Supporter time per Discord account: the bot gives the supporter role until expires_at (utils/Supporter).
+    CREATE TABLE IF NOT EXISTS supporter_time (discord_id TEXT PRIMARY KEY, expires_at INTEGER NOT NULL);
+    -- Every Ko-fi payment (POST /kofi), once; posted: shown in the supporter log channel.
+    CREATE TABLE IF NOT EXISTS kofi_payments (
+        id TEXT PRIMARY KEY, discord_id TEXT, name TEXT NOT NULL, amount TEXT NOT NULL, currency TEXT NOT NULL,
+        type TEXT NOT NULL, months INTEGER NOT NULL, message TEXT, at INTEGER NOT NULL, posted INTEGER NOT NULL DEFAULT 0
+    );
 `);
+
+const markSupporter = (uuid) => db.prepare('INSERT OR IGNORE INTO supporter_ranks (uuid, given_at) VALUES (?, ?)').run(uuid, Date.now());
+const unmarkSupporter = (uuid) => db.prepare('DELETE FROM supporter_ranks WHERE uuid = ?').run(uuid);
+const supporterUuids = () => db.prepare('SELECT uuid FROM supporter_ranks').all().map((row) => row.uuid);
+
+// Supporter time: months are calendar months, added after what's left (or from now).
+const supporterTime = (discordId) => db.prepare('SELECT expires_at AS expiresAt FROM supporter_time WHERE discord_id = ?').get(discordId)?.expiresAt;
+const supporterTimes = () => db.prepare('SELECT discord_id AS discordId, expires_at AS expiresAt FROM supporter_time').all();
+const setSupporterTime = (discordId, expiresAt) => db.prepare('INSERT OR REPLACE INTO supporter_time (discord_id, expires_at) VALUES (?, ?)').run(discordId, expiresAt);
+const removeSupporterTime = (discordId) => db.prepare('DELETE FROM supporter_time WHERE discord_id = ?').run(discordId).changes > 0;
+const addSupporterMonths = (discordId, months) => {
+    const until = new Date(Math.max(Date.now(), supporterTime(discordId) ?? 0));
+    until.setUTCMonth(until.getUTCMonth() + months);
+    setSupporterTime(discordId, until.getTime());
+    return until.getTime();
+};
+
+// Returns false for a payment that was recorded already (Ko-fi retries).
+const addKofiPayment = (p) => db.prepare(`INSERT OR IGNORE INTO kofi_payments (id, discord_id, name, amount, currency, type, months, message, at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(p.id, p.discordId ?? null, p.name, p.amount, p.currency, p.type, p.months, p.message ?? null, Date.now()).changes > 0;
+const unpostedKofiPayments = () => db.prepare('SELECT id, discord_id AS discordId, name, amount, currency, type, months, message FROM kofi_payments WHERE posted = 0 ORDER BY at').all();
+const markKofiPaymentPosted = (id) => db.prepare('UPDATE kofi_payments SET posted = 1 WHERE id = ?').run(id);
 
 const getSetting = (key) => {
     const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
@@ -135,5 +166,8 @@ const useCode = (code) => {
 
 module.exports = {
     getSetting, setSetting, getCourse, courses, courseByRef, upsertCourse, submitLap, topTimes, frames, resetBoard, removeCourse,
-    saveRace, wipe, getLink, getLinkByDiscord, uuidByName, link, unlink, createCode, useCode
+    saveRace, wipe, getLink, getLinkByDiscord, uuidByName, link, unlink, createCode, useCode,
+    markSupporter, unmarkSupporter, supporterUuids,
+    supporterTime, supporterTimes, setSupporterTime, removeSupporterTime, addSupporterMonths,
+    addKofiPayment, unpostedKofiPayments, markKofiPaymentPosted
 };

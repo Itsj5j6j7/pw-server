@@ -65,9 +65,11 @@ const config = {
             role: '1562157255816650802' // Role given by /link and removed by /unlink. The bot needs Manage Roles and its role must be above this one.
         }
     },
-    supporter: { // Ko-fi donors: Ko-fi's Discord integration gives them this role; their linked Minecraft account (/link) gets this LuckPerms group, over RCON (RCON_PORT and RCON_PASSWORD in .env; without them, nothing happens).
+    supporter: { // Ko-fi donors: the bot gives them this role while they have supporter time (Ko-fi payments to the API's /kofi, KOFI_TOKEN in .env; /supporter add), and their linked Minecraft account (/link) this LuckPerms group, over RCON (RCON_PORT and RCON_PASSWORD in .env; without them, no ranks).
         roleId: '1554403775022637077',
-        group: 'supporter'
+        group: 'supporter',
+        eurosPerMonth: 5, // Every this many euros of a Ko-fi donation or membership payment is one month of supporter time.
+        logChannel: '1557117981895696484' // Each Ko-fi payment is posted here, for staff (unmatched ones need /supporter add).
     },
     emojis: { // Custom emojis used in bot replies, format '<:name:id>' or '<a:name:id>' for animated ones.
         yes: '<:pw_yes:1561840403588841542>',

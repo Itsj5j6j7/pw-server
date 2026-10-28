@@ -124,10 +124,10 @@ const config = {
         }
     },
     playtest: {
-        adminRoles: [], // Roles that can post new versions with /playtest (Tom and whoever else).
+        adminRoles: ['1552947138693046312', '1562172073676251186'], // Roles that can post new versions with /playtest (Tom and whoever else).
         testerRoles: ['1558145187287400581'], // Roles that can open feedback posts from a version post.
-        versionsForum: '', // "playtest versions": one post per version, with the file and a feedback button. Deny Create Posts to everyone but the bot.
-        feedbackForum: '' // "playtest feedback": posts created from the button, tagged with their version. Deny Create Posts, allow Send Messages in Posts to testers. The bot needs Manage Channels here to manage the tags.
+        versionsForum: '1565038163326537848', // "playtest versions": one post per version, with the file and a feedback button. Deny Create Posts to everyone but the bot.
+        feedbackForum: '1565038454499180765' // "playtest feedback": posts created from the button, tagged with their version. Deny Create Posts, allow Send Messages in Posts to testers. The bot needs Manage Channels here to manage the tags.
     },
     users: {
         ownerId: '265862515420954625', // The bot owner ID, which is you.

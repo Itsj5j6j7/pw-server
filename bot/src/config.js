@@ -123,6 +123,12 @@ const config = {
             type: { moderation: '1562434983673602049', content: '1562435011636891701', builder: '1562435027495821352', other: '1562435038899863602' }
         }
     },
+    playtest: {
+        adminRoles: [], // Roles that can post new versions with /playtest (Tom and whoever else).
+        testerRoles: ['1558145187287400581'], // Roles that can open feedback posts from a version post.
+        versionsForum: '', // "playtest versions": one post per version, with the file and a feedback button. Deny Create Posts to everyone but the bot.
+        feedbackForum: '' // "playtest feedback": posts created from the button, tagged with their version. Deny Create Posts, allow Send Messages in Posts to testers. The bot needs Manage Channels here to manage the tags.
+    },
     users: {
         ownerId: '265862515420954625', // The bot owner ID, which is you.
         developers: ['265862515420954625', '355529049986301953', '214063863799349249', '742505697127694436'] // The bot developers, remember to include your account ID with the other account IDs.

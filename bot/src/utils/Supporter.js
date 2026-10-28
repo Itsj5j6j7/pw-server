@@ -1,3 +1,4 @@
+const { escapeMarkdown } = require('discord.js');
 const config = require('../config');
 const store = require('../bridge/store');
 const { rcon } = require('./Rcon');
@@ -77,19 +78,29 @@ const applyTimes = async (client) => {
     }
 };
 
+// What a donor typed (name, message), shown as plain text: no formatting, links, headings or mentions,
+// so it can't pass for the bot's own lines.
+const plain = (text) => escapeMarkdown(String(text), {
+    codeBlock: true, inlineCode: true, bold: true, italic: true, underline: true, strikethrough: true, spoiler: true,
+    codeBlockContent: true, inlineCodeContent: true, escape: true, heading: true, bulletedList: true, numberedList: true,
+    maskedLink: true
+}).replace(/[<@]/g, '\\$&').replace(/https?:\/\//gi, (m) => m.replace('://', ':\u200b//'));
+
 // Every Ko-fi payment once in the log channel, so staff see it and can give time by hand when the
 // donor didn't connect Discord on Ko-fi (or paid in another currency).
 const postPayments = async (client) => {
     const channel = config.supporter.logChannel && await client.channels.fetch(config.supporter.logChannel).catch(() => null);
     if (!channel) return;
     for (const p of store.unpostedKofiPayments()) {
-        const who = p.discordId ? `<@${p.discordId}>` : `**${p.name}** (no Discord on Ko-fi)`;
+        const who = p.discordId ? `<@${p.discordId}>` : `**${plain(p.name.replace(/\s+/g, ' '))}** (no Discord on Ko-fi)`;
         const until = p.discordId && store.supporterTime(p.discordId);
         const result = p.discordId && p.months > 0
             ? `+${p.months} month${p.months === 1 ? '' : 's'}, supporter until <t:${Math.floor(until / 1000)}:D>`
             : p.months > 0 ? `worth ${p.months} month${p.months === 1 ? '' : 's'}: give it with \`/supporter add\``
                 : `no supporter time (under ${config.supporter.eurosPerMonth ?? 5} EUR, another currency or not a donation): \`/supporter add\` if it should count`;
-        const text = `Ko-fi ${p.type.toLowerCase()} from ${who}: ${p.amount} ${p.currency}, ${result}.${p.message ? `\n> ${p.message}` : ''}`;
+        // Every line of the message quoted, so a line break can't start a line that looks like the bot's.
+        const message = p.message ? '\n' + p.message.split(/\r?\n/).map((line) => `> ${plain(line)}`).join('\n') : '';
+        const text = `Ko-fi ${plain(p.type.toLowerCase())} from ${who}: ${plain(p.amount)} ${plain(p.currency)}, ${result}.${message}`;
         const sent = await channel.send({ content: text, allowedMentions: { parse: [] } }).catch(() => null);
         if (sent) store.markKofiPaymentPosted(p.id);
     }

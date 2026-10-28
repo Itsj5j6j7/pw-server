@@ -148,28 +148,39 @@ const sha256 = (value) => crypto.createHash('sha256').update(value).digest();
 // payment as JSON, and the page's verification token, KOFI_TOKEN in .env. Every config.supporter.eurosPerMonth
 // euros of a donation or membership payment is a month of supporter time for the Discord account the
 // donor connected on Ko-fi; the bot (utils/Supporter) gives the role and posts each payment for staff.
+// The URL is public: only requests that fail the token check count towards the rate limit, so nobody
+// can use it up and get Ko-fi's real ones refused.
 const kofi = async (req, res) => {
-    const wait = limited('kofi', 60);
-    if (wait) return fail(res, 429, 'rate_limited', 'Too many requests.', { 'Retry-After': wait });
+    const refuse = (status, code, message) => {
+        const wait = limited('kofi-refused', 60);
+        if (wait) return fail(res, 429, 'rate_limited', 'Too many requests.', { 'Retry-After': wait });
+        return fail(res, status, code, message);
+    };
     const raw = await readBody(req);
-    if (raw === null) return fail(res, 413, 'body_too_large', 'Body too large.');
+    if (raw === null) {
+        res.on('finish', () => req.destroy()); // don't read the rest of it
+        return refuse(413, 'body_too_large', 'Body too large.');
+    }
     let data;
     try {
         data = JSON.parse(new URLSearchParams(raw).get('data') ?? '');
     } catch {
-        return fail(res, 400, 'invalid_body', 'Expected a form field "data" with JSON.');
+        return refuse(400, 'invalid_body', 'Expected a form field "data" with JSON.');
     }
     const token = process.env.KOFI_TOKEN ?? '';
     if (!token || typeof data?.verification_token !== 'string'
         || !crypto.timingSafeEqual(sha256(data.verification_token), sha256(token))) {
-        return fail(res, 401, 'unauthorized', 'Invalid verification token.');
+        return refuse(401, 'unauthorized', 'Invalid verification token.');
     }
-    const counts = ['Donation', 'Subscription'].includes(data.type) && data.currency === 'EUR';
-    const months = counts ? Math.floor(Number(data.amount) / (config.supporter.eurosPerMonth ?? 5)) : 0;
-    const discordId = /^\d{15,25}$/.test(data.discord_userid ?? '') ? data.discord_userid : null;
+    const id = data.kofi_transaction_id || data.message_id;
+    if (!id) return fail(res, 400, 'invalid_body', 'No kofi_transaction_id or message_id.');
+    const amount = Number(data.amount);
+    const counts = ['Donation', 'Subscription'].includes(data.type) && data.currency === 'EUR' && Number.isFinite(amount);
+    const months = counts ? Math.max(0, Math.floor(amount / (config.supporter.eurosPerMonth ?? 5))) : 0;
+    const discordId = /^\d{15,25}$/.test(String(data.discord_userid ?? '')) ? String(data.discord_userid) : null;
     const payment = {
-        id: String(data.kofi_transaction_id || data.message_id), discordId, name: String(data.from_name ?? '?').slice(0, 100),
-        amount: String(data.amount), currency: String(data.currency), type: String(data.type), months,
+        id: String(id), discordId, name: String(data.from_name ?? '?').slice(0, 100),
+        amount: String(data.amount ?? '?'), currency: String(data.currency ?? '?'), type: String(data.type ?? '?'), months,
         message: data.is_public === false ? null : (data.message ? String(data.message).slice(0, 500) : null)
     };
     if (store.addKofiPayment(payment) && discordId && months > 0) store.addSupporterMonths(discordId, months);
@@ -183,12 +194,14 @@ const authenticate = (req) => {
 };
 
 // Reads up to MAX_BODY bytes; null if the body is bigger.
+// null as soon as the body is over MAX_BODY (the rest isn't kept).
 const readBody = (req) => new Promise((resolve, reject) => {
     const chunks = [];
     let size = 0;
     req.on('data', (chunk) => {
         size += chunk.length;
         if (size <= MAX_BODY) chunks.push(chunk);
+        else if (size - chunk.length <= MAX_BODY) resolve(null);
     });
     req.on('end', () => resolve(size > MAX_BODY ? null : Buffer.concat(chunks).toString('utf-8')));
     req.on('error', reject);

@@ -99,8 +99,12 @@ const config = {
             neoforge: '1561833964501602316'
         }
     },
-    suggestions: {
-        channel: '1561837810116206624' // Suggestions are posted here. Any message not sent through /suggest is deleted.
+    bugsAndIdeas: { // /verdict in a post of channels.bugsAndIdeas swaps its verdict tag and title prefix ("🔧 [FIXED] ...") and locks it. The bot needs Manage Threads there.
+        tags: { // Forum tag IDs: available_tags of GET /channels/<forum id>.
+            approve: '1565365119347851425',
+            reject: '1565365162389545120',
+            fix: '1565365215384698930'
+        }
     },
     tickets: {
         staffRoles: ['1552947138693046312', '1560667470711365724', '1557121473263571004', '1561807668950073484'], // Roles that can see every ticket and use the ticket commands.

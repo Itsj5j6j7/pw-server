@@ -33,14 +33,14 @@ module.exports = new Component({
     const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large);
     const post = (downloads) => {
       const container = new ContainerBuilder()
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🧪 ${version}`))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🧪 ${version}  <@1565777659391250477>`))
         .addSeparatorComponents(separator)
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(description))
         .addSeparatorComponents(separator)
         .toJSON();
       container.components.push(
         ...downloads,
-        separator.toJSON(),
+        ...(downloads.length ? [separator.toJSON()] : []),
         new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId('playtest_feedback').setLabel('Give feedback').setEmoji('📝').setStyle(ButtonStyle.Primary)
         ).toJSON()

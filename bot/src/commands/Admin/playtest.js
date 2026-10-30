@@ -42,7 +42,7 @@ module.exports = new ApplicationCommand({
                 type: 18,
                 label: 'Downloads',
                 description: 'One link per line (jar, zip...), shown in the same order',
-                component: { type: 4, custom_id: 'links', style: 2, min_length: 1, max_length: 2000, required: true }
+                component: { type: 4, custom_id: 'links', style: 2, min_length: 1, max_length: 2000, required: false }
             }]
         });
     }

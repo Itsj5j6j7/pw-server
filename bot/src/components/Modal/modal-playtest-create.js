@@ -49,7 +49,7 @@ module.exports = new Component({
     };
 
     // File components (raw JSON: discord.js's FileBuilder only takes attachment:// URLs) are downloaded and attached by toPayload.
-    // Over the server's upload limit (or any download error) the post falls back to plain links.
+    // Over the server's upload limit (or any download error) the post falls back to plain links. Links are optional: with none, the post is just the description.
     const versionsForum = await client.channels.fetch(config.playtest.versionsForum);
     let thread;
     try {
@@ -62,7 +62,7 @@ module.exports = new Component({
       const text = links.map((link) => `📦 [\`${decodeURIComponent(new URL(link).pathname.split('/').pop()) || link}\`](${link})`).join('\n');
       thread = await versionsForum.threads.create({
         name: version,
-        message: { flags: MessageFlags.IsComponentsV2, components: post([new TextDisplayBuilder().setContent(text).toJSON()]) }
+        message: { flags: MessageFlags.IsComponentsV2, components: post(text ? [new TextDisplayBuilder().setContent(text).toJSON()] : []) }
       });
     }
 

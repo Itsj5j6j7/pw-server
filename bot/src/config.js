@@ -124,6 +124,7 @@ const config = {
         adminRoles: ['1552947138693046312', '1560667470711365724', '1557121473263571004', '1561807668950073484'], // Roles that can use /job-application and see every applicant channel.
         forum: '1562434714625646652', // Job offers are posted here.
         category: '1562434470022488165', // "I'm interested" creates the applicant channel (<id>-<name>) here. Keep it private: only the applicant and adminRoles get access.
+        archivedCategory: '1566779116735303790', // "Archived Job Applications": /archive moves finished applications here (private: only adminRoles).
         tags: { // Forum tag IDs applied to each post: available_tags of GET /channels/<forum id>.
             time: { short: '1562434770661548032', long: '1562434902920532098', once: '1562434949389230133' },
             type: { moderation: '1562434983673602049', content: '1562435011636891701', builder: '1562435027495821352', other: '1562435038899863602' }

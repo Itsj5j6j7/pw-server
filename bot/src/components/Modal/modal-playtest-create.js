@@ -9,6 +9,12 @@ const { toPayload } = require("../../utils/Messages");
 // A forum holds 20 tags at most.
 const MAX_TAGS = 20;
 
+const disableFeedback = (node) => {
+  if (node.custom_id === 'playtest_feedback') node.disabled = true;
+  node.components?.forEach(disableFeedback);
+  return node;
+};
+
 module.exports = new Component({
   customId: 'playtest_create',
   type: 'modal',
@@ -83,6 +89,21 @@ module.exports = new Component({
       tagId = updated.availableTags.find((tag) => !before.has(tag.id))?.id;
     } catch (err) {
       error(`Playtest tag ${version}: ${err.message}`);
+    }
+
+    // Only the newest version keeps an enabled feedback button. Failures are logged and retried on the next version.
+    for (const [key, old] of client.database.entries().filter(([key, value]) => key.startsWith('playtest.') && !value.closed)) {
+      try {
+        const oldThread = await client.channels.fetch(key.slice('playtest.'.length));
+        const wasArchived = oldThread.archived;
+        if (wasArchived) await oldThread.setArchived(false);
+        const starter = await oldThread.fetchStarterMessage();
+        await starter.edit({ flags: MessageFlags.IsComponentsV2, components: starter.components.map((component) => disableFeedback(component.toJSON())) });
+        if (wasArchived) await oldThread.setArchived(true);
+        client.database.set(key, { ...old, closed: true });
+      } catch (err) {
+        error(`Playtest ${old.version}: could not disable its feedback button: ${err.message}`);
+      }
     }
 
     client.database.set(`playtest.${thread.id}`, { version, tagId });

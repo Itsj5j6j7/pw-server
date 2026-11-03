@@ -5,6 +5,7 @@ const config = require("../../config");
 const { notice } = require("../../utils/Notice");
 const store = require("../../bridge/store");
 const { hasRole, setRank } = require("../../utils/Supporter");
+const { setLinked } = require("../../utils/Linked");
 
 module.exports = new ApplicationCommand({
     command: {
@@ -26,6 +27,7 @@ module.exports = new ApplicationCommand({
         const link = store.getLinkByDiscord(interaction.user.id);
         const unlinked = store.unlink(interaction.user.id);
         if (unlinked) await interaction.member.roles.remove(config.bridge.link.role).catch(() => null);
+        if (unlinked) await setLinked(unlinked, link?.mcName ?? unlinked, false);
         // The supporter group stays with the Discord account, not the Minecraft one.
         if (unlinked && link && hasRole(interaction.member)) await setRank(unlinked, link.mcName, false);
         await interaction.reply(unlinked

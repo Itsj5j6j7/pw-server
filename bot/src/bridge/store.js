@@ -130,6 +130,8 @@ const wipe = (links) => {
 
 const getLink = (uuid) => db.prepare('SELECT discord_id AS discordId, mc_name AS mcName FROM links WHERE uuid = ?').get(uuid);
 
+const links = () => db.prepare('SELECT uuid, mc_name AS mcName FROM links').all();
+
 const getLinkByDiscord = (discordId) => db.prepare('SELECT uuid, mc_name AS mcName FROM links WHERE discord_id = ?').get(discordId);
 
 // uuid of the player that last flew under that name (the mod sends only the name of a beaten record).
@@ -166,7 +168,7 @@ const useCode = (code) => {
 
 module.exports = {
     getSetting, setSetting, getCourse, courses, courseByRef, upsertCourse, submitLap, topTimes, frames, resetBoard, removeCourse,
-    saveRace, wipe, getLink, getLinkByDiscord, uuidByName, link, unlink, createCode, useCode,
+    saveRace, wipe, getLink, getLinkByDiscord, links, uuidByName, link, unlink, createCode, useCode,
     markSupporter, unmarkSupporter, supporterUuids,
     supporterTime, supporterTimes, setSupporterTime, removeSupporterTime, addSupporterMonths,
     addKofiPayment, unpostedKofiPayments, markKofiPaymentPosted

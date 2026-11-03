@@ -1,5 +1,7 @@
 # Propwash Bridge
 
+> **Branch `hub-link`: hub build.** Only the in-game `/link` command (plus a startup `GET /v1/ping` to log which server the key belongs to). No heartbeat, events, mixin, Vanish or Propwash, so it runs on the Fabric hub without Propwash and builds without `libs/`. Config is just `apiUrl` and `apiKey` (same env vars). Jar: `build/libs/propwash-bridge-<version>+hub.jar`. The rest of this README describes the full mod on `main`.
+
 Server-side Fabric mod that reports server status, records and course changes from Propwash to the bridge API in [`../bot`](../bot). The API contract (endpoints, events, errors) is in the [bot README](../bot/README.md#bridge-api).
 
 The mod only **sends**; the API never calls the mod. It does three things: a heartbeat every 30 s, a queue of events (start, stop, records, course changes), and the in-game `/link` command.

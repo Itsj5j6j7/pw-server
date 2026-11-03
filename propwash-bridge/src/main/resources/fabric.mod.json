@@ -3,7 +3,7 @@
 	"id": "propwash-bridge",
 	"version": "${version}",
 	"name": "Propwash Bridge",
-	"description": "Server-side bridge that sends server status, race results and records from Propwash to the Discord bot.",
+	"description": "Hub build of the Propwash bridge: only the in-game /link command for the Discord bot.",
 	"authors": [
 		"Itsj5j6j7"
 	],
@@ -15,16 +15,10 @@
 			"dev.j4v1.propwashbridge.PropwashBridge"
 		]
 	},
-	"mixins": [
-		"propwash-bridge.mixins.json"
-	],
 	"depends": {
 		"fabricloader": ">=0.19.5",
 		"minecraft": "~26.3",
 		"java": ">=25",
 		"fabric-api": "*"
-	},
-	"breaks": {
-		"propwash": "<0.5.0"
 	}
 }

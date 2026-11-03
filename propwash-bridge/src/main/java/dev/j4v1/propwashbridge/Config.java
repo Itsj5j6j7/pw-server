@@ -8,9 +8,9 @@ import com.google.gson.JsonParser;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-record Config(String apiUrl, String apiKey, int heartbeatSeconds, int batchMs, int queueMax) {
+record Config(String apiUrl, String apiKey) {
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-	private static final Config DEFAULTS = new Config("http://127.0.0.1:3006", "", 30, 1000, 200);
+	private static final Config DEFAULTS = new Config("http://127.0.0.1:3006", "");
 
 	/** PROPWASH_BRIDGE_API_URL and PROPWASH_BRIDGE_API_KEY, when set, win over the file: the key stays out of the config folder. */
 	private static String env(String name, String fallback) {
@@ -28,8 +28,6 @@ record Config(String apiUrl, String apiKey, int heartbeatSeconds, int batchMs, i
 		JsonObject json = GSON.toJsonTree(DEFAULTS).getAsJsonObject();
 		JsonParser.parseString(Files.readString(path)).getAsJsonObject().asMap().forEach(json::add);
 		Config c = GSON.fromJson(json, Config.class);
-		// The bot marks a server offline after 90 s without a heartbeat.
-		return new Config(env("PROPWASH_BRIDGE_API_URL", c.apiUrl).replaceAll("/+$", ""), env("PROPWASH_BRIDGE_API_KEY", c.apiKey).trim(), Math.clamp(c.heartbeatSeconds, 5, 85),
-				Math.max(c.batchMs, 100), Math.max(c.queueMax, 10));
+		return new Config(env("PROPWASH_BRIDGE_API_URL", c.apiUrl).replaceAll("/+$", ""), env("PROPWASH_BRIDGE_API_KEY", c.apiKey).trim());
 	}
 }

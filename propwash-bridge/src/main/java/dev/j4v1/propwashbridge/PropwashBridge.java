@@ -1,11 +1,9 @@
 package dev.j4v1.propwashbridge;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import de.lardtom.propwash.api.PropwashApi;
+import com.google.gson.JsonParser;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.Commands;
@@ -17,87 +15,60 @@ import net.minecraft.server.level.ServerPlayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.UUID;
 
+/** Hub build: only the in-game /link command, no status, events or Propwash. */
 public class PropwashBridge implements ModInitializer {
 	public static final String MOD_ID = "propwash-bridge";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-	/** Null while the bridge is idle (no apiKey). */
-	static Sender sender;
-	static MinecraftServer server;
-	private static long startedAt;
+	private static final HttpClient HTTP = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
+	private static Config config;
+	private static String userAgent;
 
 	@Override
 	public void onInitialize() {
-		if (!FabricLoader.getInstance().isModLoaded("propwash")) throw new IllegalStateException("Propwash Bridge needs Propwash");
-		PropwashApi.requireVersion(MOD_ID, "1.5.0");
-
-		Config config;
 		try {
 			config = Config.load(FabricLoader.getInstance().getConfigDir().resolve(MOD_ID + ".json"));
 		} catch (Exception e) {
-			LOGGER.error("Can't read config/{}.json, the bridge stays idle", MOD_ID, e);
+			LOGGER.error("Can't read config/{}.json, /link stays disabled", MOD_ID, e);
 			return;
 		}
 		if (config.apiKey().isEmpty()) {
-			LOGGER.warn("No apiKey (PROPWASH_BRIDGE_API_KEY or config/{}.json), the bridge stays idle", MOD_ID);
+			LOGGER.warn("No apiKey (PROPWASH_BRIDGE_API_KEY or config/{}.json), /link stays disabled", MOD_ID);
 			return;
 		}
-		LOGGER.info("Bridge enabled for {} with key ...{}", config.apiUrl(), config.apiKey().substring(Math.max(0, config.apiKey().length() - 4)));
-		sender = new Sender(config, version(MOD_ID));
+		userAgent = "propwash-bridge/" + FabricLoader.getInstance().getModContainer(MOD_ID).orElseThrow().getMetadata().getVersion().getFriendlyString();
+		LOGGER.info("Bridge (link only) for {} with key ...{}", config.apiUrl(), config.apiKey().substring(Math.max(0, config.apiKey().length() - 4)));
 
-		ServerLifecycleEvents.SERVER_STARTED.register(s -> {
-			server = s;
-			startedAt = System.currentTimeMillis();
-			JsonObject started = versions();
-			started.addProperty("maxPlayers", s.getPlayerList().getMaxPlayers());
-			// Not from a tick event: an empty server stops ticking after pause-when-empty-seconds, and the bot would mark it offline.
-			// Server tasks still run while paused, so the heartbeat is built on the server thread anyway.
-			sender.start(started, () -> s.execute(() -> sender.heartbeat(heartbeat(s))));
+		HTTP.sendAsync(request("/v1/ping", null), HttpResponse.BodyHandlers.ofString()).whenComplete((res, e) -> {
+			if (res != null && res.statusCode() == 200) {
+				JsonObject server = parse(res.body()).getAsJsonObject("server");
+				LOGGER.info("Bridge connected as {} ({})", server.get("name").getAsString(), server.get("id").getAsString());
+			} else {
+				LOGGER.warn("Bridge can't connect to {} ({})", config.apiUrl(),
+						res == null ? e : res.statusCode() == 401 ? "key not accepted, check apiKey for this server" : "HTTP " + res.statusCode());
+			}
 		});
-		ServerLifecycleEvents.SERVER_STOPPING.register(s -> {
-			JsonObject stopping = new JsonObject();
-			stopping.addProperty("reason", "stop");
-			sender.stop(stopping);
-		});
+
 		CommandRegistrationCallback.EVENT.register((dispatcher, context, selection) -> dispatcher.register(
 				Commands.literal("link").executes(c -> link(c.getSource().getPlayerOrException()))));
 	}
 
-	private static JsonObject heartbeat(MinecraftServer s) {
-		JsonArray players = new JsonArray();
-		int online = 0;
-		for (ServerPlayer player : s.getPlayerList().getPlayers()) {
-			if (Vanish.hidden(player)) continue;
-			online++;
-			// One name the bot can't validate would reject the whole heartbeat.
-			if (!Races.name(player).matches("\\w{1,16}")) continue;
-			JsonObject json = Races.player(player.getUUID(), Races.name(player));
-			json.addProperty("dimension", player.level().dimension().identifier().toString());
-			players.add(json);
-		}
-
-		double mspt = s.getAverageTickTimeNanos() / 1e6;
-		Runtime runtime = Runtime.getRuntime();
-		JsonObject body = versions();
-		body.addProperty("onlinePlayers", online);
-		body.addProperty("maxPlayers", s.getPlayerList().getMaxPlayers());
-		body.add("players", players);
-		body.addProperty("tps", Math.round(Math.min(20, 1000 / mspt) * 10) / 10.0);
-		body.addProperty("mspt", Math.round(mspt * 10) / 10.0);
-		body.addProperty("uptimeSeconds", (System.currentTimeMillis() - startedAt) / 1000);
-		body.addProperty("memoryUsedMb", (runtime.totalMemory() - runtime.freeMemory()) >> 20);
-		body.addProperty("memoryMaxMb", runtime.maxMemory() >> 20);
-		return body;
-	}
-
 	private static int link(ServerPlayer player) {
 		UUID uuid = player.getUUID();
-		MinecraftServer s = server;
-		sender.link(uuid, Races.name(player), (status, body) -> s.execute(() -> {
+		MinecraftServer s = player.level().getServer();
+		JsonObject body = new JsonObject();
+		body.addProperty("uuid", uuid.toString());
+		body.addProperty("name", player.getGameProfile().name());
+		HTTP.sendAsync(request("/v1/link/start", body), HttpResponse.BodyHandlers.ofString()).whenComplete((res, e) -> s.execute(() -> {
 			ServerPlayer target = s.getPlayerList().getPlayer(uuid);
-			if (target != null) target.sendSystemMessage(linkReply(status, body));
+			if (target != null) target.sendSystemMessage(res == null ? linkReply(-1, new JsonObject()) : linkReply(res.statusCode(), parse(res.body())));
 		}));
 		return 1;
 	}
@@ -118,17 +89,21 @@ public class PropwashBridge implements ModInitializer {
 		};
 	}
 
-	private static JsonObject versions() {
-		JsonObject json = new JsonObject();
-		json.addProperty("mcVersion", version("minecraft"));
-		json.addProperty("loader", "fabric");
-		json.addProperty("loaderVersion", version("fabricloader"));
-		json.addProperty("modVersion", version(MOD_ID));
-		json.addProperty("propwashVersion", version("propwash"));
-		return json;
+	private static HttpRequest request(String path, JsonObject body) {
+		HttpRequest.Builder req = HttpRequest.newBuilder(URI.create(config.apiUrl() + path))
+				.timeout(Duration.ofSeconds(5))
+				.header("Authorization", "Bearer " + config.apiKey())
+				.header("User-Agent", userAgent);
+		if (body == null) req.GET();
+		else req.header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body.toString()));
+		return req.build();
 	}
 
-	private static String version(String modId) {
-		return FabricLoader.getInstance().getModContainer(modId).map(mod -> mod.getMetadata().getVersion().getFriendlyString()).orElse(null);
+	private static JsonObject parse(String body) {
+		try {
+			return JsonParser.parseString(body).getAsJsonObject();
+		} catch (RuntimeException e) {
+			return new JsonObject();
+		}
 	}
 }

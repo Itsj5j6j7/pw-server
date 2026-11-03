@@ -39,7 +39,7 @@ module.exports = new Component({
     const separator = new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large);
     const post = (downloads) => {
       const container = new ContainerBuilder()
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🧪 ${version}  <@1565777659391250477>`))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🧪 ${version}  <@&1558145187287400581>`))
         .addSeparatorComponents(separator)
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(description))
         .addSeparatorComponents(separator)

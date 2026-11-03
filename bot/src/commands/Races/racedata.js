@@ -6,6 +6,7 @@ const { notice } = require("../../utils/Notice");
 const { isStaff } = require("../../utils/Tickets");
 const store = require("../../bridge/store");
 const { courseTitle } = require("../../bridge/render");
+const { setLinked } = require("../../utils/Linked");
 
 const courseOption = { name: 'course', description: 'The course', type: ApplicationCommandOptionType.String, required: true, autocomplete: true };
 
@@ -63,7 +64,10 @@ module.exports = new ApplicationCommand({
             if (!interaction.options.getBoolean('confirm')) return interaction.reply(notice(config.emojis.no, 'Nothing was deleted: set `confirm` to `True` to wipe the race data.'));
 
             const links = interaction.options.getBoolean('links') ?? false;
+            const unlinked = links ? store.links() : [];
             const count = store.wipe(links);
+            // After the reply (Discord waits only 3 s for it): the unlinked accounts lose propwash.linked.
+            (async () => { for (const { uuid, mcName } of unlinked) await setLinked(uuid, mcName, false); })();
             return interaction.reply(notice(config.emojis.yes, `Deleted **${count}** course${count === 1 ? '' : 's'} and their leaderboards${links ? ' and every account link' : ''}.`));
         }
 

@@ -7,7 +7,7 @@ const { memberCheck, send, edit, rename, enqueue } = require('./rest');
 const STATUS_KEY = 'status-message';
 
 // One state per server. online: null until its first heartbeat or timeout after boot.
-const states = new Map(servers.list.map((server) => [server.id, { server, online: null, since: Date.now(), lastBeat: Date.now(), heartbeat: null, info: {} }]));
+const states = new Map(servers.list.filter((server) => server.status).map((server) => [server.id, { server, online: null, since: Date.now(), lastBeat: Date.now(), heartbeat: null, info: {} }]));
 let lastRendered = null;
 
 // A player who just switched server through Velocity can still be in the old server's last heartbeat:

@@ -46,6 +46,11 @@ const config = {
                 name: 'Plots',
                 keyEnv: 'BRIDGE_KEY_PLOTS',
                 maps: { 'fabricplots:plots': 'Plots' }
+            },
+            hub: {
+                name: 'Hub',
+                keyEnv: 'BRIDGE_KEY_HUB',
+                status: false // Link-only build of the mod (branch hub-link): only /link, no heartbeat. Left out of the status message.
             }
         },
         channels: {

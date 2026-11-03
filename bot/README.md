@@ -27,7 +27,7 @@ cp .env.example .env
 
 Fill in:
 
-- `.env`: `CLIENT_TOKEN`, `TYPESAFE_API_KEY` (FAQ answers), and one API key per Minecraft server (`BRIDGE_KEY_FPV`, `BRIDGE_KEY_PLOTS`; generate each with `openssl rand -hex 32`). With a single server, use `BRIDGE_API_KEY` and leave `bridge.servers` empty.
+- `.env`: `CLIENT_TOKEN`, `TYPESAFE_API_KEY` (FAQ answers), and one API key per Minecraft server (`BRIDGE_KEY_FPV`, `BRIDGE_KEY_PLOTS`, `BRIDGE_KEY_HUB`; generate each with `openssl rand -hex 32`). With a single server, use `BRIDGE_API_KEY` and leave `bridge.servers` empty.
 - `src/config.js`: channel, role and category IDs; the `bridge` block (port, servers, channels). Versioned: edit it and commit, it holds no secrets (API keys stay in `.env`). Every field is commented in the file.
 
 `.env` is gitignored. Never commit it.
@@ -75,6 +75,7 @@ Contract between the [bridge mod](../propwash-bridge) and `propwash-api`. The mo
 
 - One key per server: `openssl rand -hex 32`, stored in the bot's `.env` (`BRIDGE_KEY_FPV`, `BRIDGE_KEY_PLOTS`...).
 - One entry per server in `config.bridge.servers` (`fpv: { name: 'FPV', keyEnv: 'BRIDGE_KEY_FPV', maps: {...} }`).
+- `status: false` for a server running the link-only build (the hub, branch `hub-link`): it can use `/link/start` but sends no heartbeat, so it's left out of the status message.
 - The API runs as its own pm2 process (`propwash-api`, `src/bridge/index.js`), separate from the Discord bot (`propwash`). Restarting the bot doesn't interrupt the mods; both share the SQLite file `bridge.db`.
 - Adding the SMP later: new key, new entry, `pm2 restart propwash-api propwash`, and the same `.jar` on the SMP with that key.
 - Revoking a leaked key: remove or rotate that server's entry. The other servers keep working.

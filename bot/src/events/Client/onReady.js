@@ -1,7 +1,8 @@
 const { success } = require("../../utils/Console");
 const Event = require("../../structure/Event");
 const { sweep } = require("../../utils/Voice");
-const { syncAll, startTimer } = require("../../utils/Supporter");
+const { startTimer } = require("../../utils/Supporter");
+const { syncAll } = require("../../utils/Ranks");
 const { syncAllLinked } = require("../../utils/Linked");
 const { startMeetings } = require("../../utils/Jobs");
 

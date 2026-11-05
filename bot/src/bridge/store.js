@@ -30,8 +30,10 @@ db.exec(`
         code TEXT PRIMARY KEY, uuid TEXT NOT NULL UNIQUE, name TEXT NOT NULL, expires_at INTEGER NOT NULL
     );
     CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-    -- Minecraft accounts the bot gave the supporter group (utils/Supporter), so it only ever takes back its own.
+    -- Minecraft accounts the bot gave the supporter group (utils/Ranks), so it only ever takes back its own.
     CREATE TABLE IF NOT EXISTS supporter_ranks (uuid TEXT PRIMARY KEY, given_at INTEGER NOT NULL);
+    -- The same for the other role ranks (utils/Ranks, config.roleRanks), per LuckPerms group.
+    CREATE TABLE IF NOT EXISTS role_ranks (grp TEXT NOT NULL, uuid TEXT NOT NULL, given_at INTEGER NOT NULL, PRIMARY KEY (grp, uuid));
     -- Supporter time per Discord account: the bot gives the supporter role until expires_at (utils/Supporter).
     CREATE TABLE IF NOT EXISTS supporter_time (discord_id TEXT PRIMARY KEY, expires_at INTEGER NOT NULL);
     -- Every Ko-fi payment (POST /kofi), once; posted: shown in the supporter log channel.
@@ -44,6 +46,9 @@ db.exec(`
 const markSupporter = (uuid) => db.prepare('INSERT OR IGNORE INTO supporter_ranks (uuid, given_at) VALUES (?, ?)').run(uuid, Date.now());
 const unmarkSupporter = (uuid) => db.prepare('DELETE FROM supporter_ranks WHERE uuid = ?').run(uuid);
 const supporterUuids = () => db.prepare('SELECT uuid FROM supporter_ranks').all().map((row) => row.uuid);
+const markRank = (group, uuid) => db.prepare('INSERT OR IGNORE INTO role_ranks (grp, uuid, given_at) VALUES (?, ?, ?)').run(group, uuid, Date.now());
+const unmarkRank = (group, uuid) => db.prepare('DELETE FROM role_ranks WHERE grp = ? AND uuid = ?').run(group, uuid);
+const rankUuids = (group) => db.prepare('SELECT uuid FROM role_ranks WHERE grp = ?').all(group).map((row) => row.uuid);
 
 // Supporter time: months are calendar months, added after what's left (or from now).
 const supporterTime = (discordId) => db.prepare('SELECT expires_at AS expiresAt FROM supporter_time WHERE discord_id = ?').get(discordId)?.expiresAt;
@@ -169,7 +174,7 @@ const useCode = (code) => {
 module.exports = {
     getSetting, setSetting, getCourse, courses, courseByRef, upsertCourse, submitLap, topTimes, frames, resetBoard, removeCourse,
     saveRace, wipe, getLink, getLinkByDiscord, links, uuidByName, link, unlink, createCode, useCode,
-    markSupporter, unmarkSupporter, supporterUuids,
+    markSupporter, unmarkSupporter, supporterUuids, markRank, unmarkRank, rankUuids,
     supporterTime, supporterTimes, setSupporterTime, removeSupporterTime, addSupporterMonths,
     addKofiPayment, unpostedKofiPayments, markKofiPaymentPosted
 };

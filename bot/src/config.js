@@ -76,6 +76,9 @@ const config = {
         eurosPerMonth: 5, // Every this many euros of a Ko-fi donation or membership payment is one month of supporter time.
         logChannel: '1557117981895696484' // Each Ko-fi payment is posted here, for staff (unmatched ones need /supporter add).
     },
+    roleRanks: [ // More Discord roles that come with a LuckPerms group for the linked Minecraft account (/link), like the supporter role, over the same RCON. Given by hand on Discord; the bot only follows them.
+        { name: 'Creator', roleId: '1555191972363247727', group: 'creator' } // Content creators: [Creator] in game.
+    ],
     emojis: { // Custom emojis used in bot replies, format '<:name:id>' or '<a:name:id>' for animated ones.
         yes: '<:pw_yes:1561840403588841542>',
         no: '<:pw_no:1561840427680927834>',

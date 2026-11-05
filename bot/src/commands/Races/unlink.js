@@ -4,7 +4,7 @@ const ApplicationCommand = require("../../structure/ApplicationCommand");
 const config = require("../../config");
 const { notice } = require("../../utils/Notice");
 const store = require("../../bridge/store");
-const { hasRole, setRank } = require("../../utils/Supporter");
+const { unlinked: ranksUnlinked } = require("../../utils/Ranks");
 const { setLinked } = require("../../utils/Linked");
 
 module.exports = new ApplicationCommand({
@@ -28,8 +28,8 @@ module.exports = new ApplicationCommand({
         const unlinked = store.unlink(interaction.user.id);
         if (unlinked) await interaction.member.roles.remove(config.bridge.link.role).catch(() => null);
         if (unlinked) await setLinked(unlinked, link?.mcName ?? unlinked, false);
-        // The supporter group stays with the Discord account, not the Minecraft one.
-        if (unlinked && link && hasRole(interaction.member)) await setRank(unlinked, link.mcName, false);
+        // The rank groups (supporter, creator, ...) stay with the Discord account, not the Minecraft one.
+        if (unlinked) await ranksUnlinked(interaction.member, unlinked, link?.mcName ?? unlinked);
         await interaction.reply(unlinked
             ? notice(config.emojis.yes, 'Your Minecraft account has been **unlinked**.')
             : notice(config.emojis.no, 'You don\'t have a linked Minecraft account.'));

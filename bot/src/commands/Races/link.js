@@ -4,7 +4,7 @@ const ApplicationCommand = require("../../structure/ApplicationCommand");
 const config = require("../../config");
 const { notice } = require("../../utils/Notice");
 const store = require("../../bridge/store");
-const { sync } = require("../../utils/Supporter");
+const { sync, unlinked } = require("../../utils/Ranks");
 const { setLinked } = require("../../utils/Linked");
 
 module.exports = new ApplicationCommand({
@@ -35,7 +35,10 @@ module.exports = new ApplicationCommand({
         // Linking replaces this Discord account's previous link, whose Minecraft account loses the permission.
         const previous = store.getLinkByDiscord(interaction.user.id);
         store.link(entry.uuid, entry.name, interaction.user.id);
-        if (previous && previous.uuid !== entry.uuid) await setLinked(previous.uuid, previous.mcName, false);
+        if (previous && previous.uuid !== entry.uuid) {
+            await setLinked(previous.uuid, previous.mcName, false);
+            await unlinked(interaction.member, previous.uuid, previous.mcName);
+        }
         await setLinked(entry.uuid, entry.name, true);
         await interaction.member.roles.add(config.bridge.link.role).catch(() => null);
         await sync(interaction.member);

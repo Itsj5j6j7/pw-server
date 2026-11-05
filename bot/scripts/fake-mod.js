@@ -24,7 +24,7 @@ const COURSE = { id: '5f1c2a9e-3b7d-4e21-9c55-1a2b3c4d5e6f', number: 3, name: 'D
 const GONE = { ...COURSE, id: '00000000-0000-4000-8000-0000000000aa', number: 9, name: 'Old Track' };
 
 const event = (type, data, id = crypto.randomUUID()) => ({ id, type, ts: Date.now(), data });
-const entry = (rank, player, nanos, frame = '5inch', assist = []) => ({ rank, player, nanos, date: Date.now(), frame, assist });
+const entry = (rank, player, nanos, frame = '5inch', assist = [], otherRules = false) => ({ rank, player, nanos, date: Date.now(), frame, assist, otherRules });
 const board = (kind, category, entries, extra = {}) => ({ kind, category, frame: null, laps: null, total: entries.length, entries, ...extra });
 const courseBoard = (course, laps) => ({ course, boards: [
     board('lap', 'clean', laps),
@@ -49,7 +49,7 @@ const heartbeat = (players) => call('POST', '/heartbeat', {
     let res = await call('POST', '/events', { events: [
         event('server.started', { mcVersion: '26.3', loader: 'fabric', propwashVersion: '0.6.0', maxPlayers: 20 }),
         event('course.board', courseBoard(GONE, [entry(1, JAVI, 60000000000)])),
-        event('course.board', courseBoard(COURSE, [entry(1, ANA, 48213000000)])),
+        event('course.board', courseBoard(COURSE, [entry(1, ANA, 48213000000, '5inch', [], true)])),
         event('courses.sync', { courseIds: [COURSE.id] })
     ] });
     assert.equal(res.status, 200);

@@ -30,7 +30,7 @@ The mod only **sends**; the API never calls the mod. It does three things: a hea
 
 Propwash isn't published on any maven, so the build compiles against the local jar:
 
-1. Copy `propwash-fabric-26.3-0.6.0-rc.2.jar` (or the 0.6.0 release, only one Propwash jar) and the Vanish mod jar (`vanish-1.6.16+26.3.jar`, from Modrinth, compile-only) into `libs/` (gitignored: Propwash is PolyForm Shield).
+1. Copy `propwash-fabric-26.3-0.6.0-rc.3.jar` (or the 0.6.0 release, only one Propwash jar) and the Vanish mod jar (`vanish-1.6.16+26.3.jar`, from Modrinth, compile-only) into `libs/` (gitignored: Propwash is PolyForm Shield).
 2. `./gradlew build` → `build/libs/propwash-bridge-<version>.jar`.
 
 The GitHub workflow fails without that jar.
@@ -106,7 +106,7 @@ Sender rules (`Sender.java`):
 
 ## Propwash updates
 
-Only the public API is used, so Propwash updates that keep API 1.x don't need a new bridge. Checked against 0.6.0-rc.2. Propwash also writes its own copy of this data to `world/propwash/race-data/` (`courses.json` and `leaderboards/<uuid>.json`); the bridge doesn't read it.
+Only the public API is used, so Propwash updates that keep API 1.x don't need a new bridge. Checked against 0.6.0-rc.2 and rc.3 (rc.3 adds `otherRules` on board entries: flown under different server race rules). Propwash also writes its own copy of this data to `world/propwash/race-data/` (`courses.json` and `leaderboards/<uuid>.json`); the bridge doesn't read it.
 
 > Propwash (everything except its API) is licensed under PolyForm Shield 1.0.0. Read its `LICENSE` or ask the author before distributing the bridge.
 

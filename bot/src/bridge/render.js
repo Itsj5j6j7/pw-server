@@ -156,6 +156,7 @@ const buildLeaderboard = async (isMember, course, { frame = null, laps = null, a
         `\`${formatTime(entry.nanos)}\``,
         frameName(entry.frame),
         entry.assist.length && `⚠️ ${escapeMarkdown(entry.assist.join(', '))}`,
+        entry.otherRules && '⚙️',
         entry.date && `<t:${Math.floor(entry.date / 1000)}:d>`
     ].filter(Boolean).join(' · ')));
 
@@ -174,7 +175,11 @@ const buildLeaderboard = async (isMember, course, { frame = null, laps = null, a
         )
         .addSeparatorComponents(new SeparatorBuilder())
         .addTextDisplayComponents(text(lines.join('\n') || (laps ? 'No race times yet. Go race!' : 'No lap times yet. Go fly!')));
-    if (board && board.total > entries.length) container.addTextDisplayComponents(text(`-# Top ${entries.length} of ${plural(board.total, 'pilot')}`));
+    const footer = [
+        board && board.total > entries.length && `Top ${entries.length} of ${plural(board.total, 'pilot')}`,
+        entries.some((entry) => entry.otherRules) && '⚙️ flown under different server rules'
+    ].filter(Boolean).join(' · ');
+    if (footer) container.addTextDisplayComponents(text(`-# ${footer}`));
     return payload(container);
 };
 

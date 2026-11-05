@@ -230,6 +230,8 @@ final class Races {
 			JsonArray assist = new JsonArray();
 			entry.assistReasons().forEach(assist::add);
 			json.add("assist", assist);
+			// Flown while the server's race rules were different from now (0.6.0-rc.3+).
+			json.addProperty("otherRules", entry.serverRulesDiffer());
 			entries.add(json);
 		}
 		JsonObject json = new JsonObject();

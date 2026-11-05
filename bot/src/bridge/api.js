@@ -27,7 +27,8 @@ const isOneOf = (...values) => (v) => values.includes(v);
 const isCourse = (c) => isObj(c) && isUuid(c.id) && isInt(c.number) && isStr(c.name, 64) && isDimension(c.dimension) && isInt(c.layout)
     && Number.isSafeInteger(c.laps) && c.laps >= -1 && isOneOf('laps', 'point_to_point')(c.mode) && optional((v) => isStr(v, 32))(c.ownerName);
 const isEntry = (e) => isObj(e) && isPositive(e.rank) && isPlayer(e.player) && isPositive(e.nanos) && optional(isInt)(e.date)
-    && isStr(e.frame) && Array.isArray(e.assist) && e.assist.length <= 20 && e.assist.every((reason) => isStr(reason, 64));
+    && isStr(e.frame) && Array.isArray(e.assist) && e.assist.length <= 20 && e.assist.every((reason) => isStr(reason, 64))
+    && optional((v) => typeof v === 'boolean')(e.otherRules);
 const isBoard = (b) => isObj(b) && isOneOf('lap', 'race')(b.kind) && isOneOf('clean', 'assisted')(b.category) && optional(isStr)(b.frame)
     && (b.kind === 'race' ? isPositive(b.laps) : b.laps === undefined || b.laps === null) && isInt(b.total)
     && Array.isArray(b.entries) && b.entries.length <= 50 && b.entries.every(isEntry);

@@ -31,7 +31,7 @@ public class PropwashBridge implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		if (!FabricLoader.getInstance().isModLoaded("propwash")) throw new IllegalStateException("Propwash Bridge needs Propwash");
-		PropwashApi.requireVersion(MOD_ID, "1.5.0");
+		PropwashApi.requireVersion(MOD_ID, "1.7.0");
 
 		Config config;
 		try {
@@ -46,6 +46,7 @@ public class PropwashBridge implements ModInitializer {
 		}
 		LOGGER.info("Bridge enabled for {} with key ...{}", config.apiUrl(), config.apiKey().substring(Math.max(0, config.apiKey().length() - 4)));
 		sender = new Sender(config, version(MOD_ID));
+		Races.register();
 
 		ServerLifecycleEvents.SERVER_STARTED.register(s -> {
 			server = s;
@@ -54,9 +55,10 @@ public class PropwashBridge implements ModInitializer {
 			started.addProperty("maxPlayers", s.getPlayerList().getMaxPlayers());
 			// Not from a tick event: an empty server stops ticking after pause-when-empty-seconds, and the bot would mark it offline.
 			// Server tasks still run while paused, so the heartbeat is built on the server thread anyway.
-			sender.start(started, () -> s.execute(() -> sender.heartbeat(heartbeat(s))));
+			sender.start(started, () -> s.execute(() -> sender.heartbeat(heartbeat(s))), () -> s.execute(() -> Races.sync(s)));
 		});
 		ServerLifecycleEvents.SERVER_STOPPING.register(s -> {
+			Races.flushHeats(true);
 			JsonObject stopping = new JsonObject();
 			stopping.addProperty("reason", "stop");
 			sender.stop(stopping);
@@ -72,8 +74,8 @@ public class PropwashBridge implements ModInitializer {
 			if (Vanish.hidden(player)) continue;
 			online++;
 			// One name the bot can't validate would reject the whole heartbeat.
-			if (!Races.name(player).matches("\\w{1,16}")) continue;
-			JsonObject json = Races.player(player.getUUID(), Races.name(player));
+			if (!Races.valid(name(player))) continue;
+			JsonObject json = Races.player(player.getUUID(), name(player));
 			json.addProperty("dimension", player.level().dimension().identifier().toString());
 			players.add(json);
 		}
@@ -95,7 +97,7 @@ public class PropwashBridge implements ModInitializer {
 	private static int link(ServerPlayer player) {
 		UUID uuid = player.getUUID();
 		MinecraftServer s = server;
-		sender.link(uuid, Races.name(player), (status, body) -> s.execute(() -> {
+		sender.link(uuid, name(player), (status, body) -> s.execute(() -> {
 			ServerPlayer target = s.getPlayerList().getPlayer(uuid);
 			if (target != null) target.sendSystemMessage(linkReply(status, body));
 		}));
@@ -116,6 +118,10 @@ public class PropwashBridge implements ModInitializer {
 			case 429 -> Component.literal("Too many codes, try again in a minute").withStyle(ChatFormatting.RED);
 			default -> Component.literal("Couldn't reach Discord, try again later").withStyle(ChatFormatting.RED);
 		};
+	}
+
+	private static String name(ServerPlayer player) {
+		return player.getGameProfile().name();
 	}
 
 	private static JsonObject versions() {

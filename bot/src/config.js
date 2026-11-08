@@ -115,7 +115,7 @@ const config = {
         }
     },
     tickets: {
-        staffRoles: ['1552947138693046312', '1560667470711365724', '1557121473263571004', '1561807668950073484'], // Roles that can see every ticket and use the ticket commands.
+        staffRoles: ['1565779169441353728', '1552947138693046312', '1560667470711365724', '1557121473263571004', '1561807668950073484'], // Roles that can see every ticket and use the ticket commands.
         categories: { // Category where each ticket type is created.
             help: '1562434037417513064',
             bug: '1562434037417513064',

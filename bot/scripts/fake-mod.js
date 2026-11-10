@@ -1,5 +1,5 @@
 // Simulates the bridge mod against a running bridge API: node scripts/fake-mod.js [api url] [env var with the key, default BRIDGE_API_KEY]
-// Run it with BRIDGE_KEY_FPV and then BRIDGE_KEY_PLOTS to simulate two servers.
+// Run it with BRIDGE_KEY_FREESTYLE, BRIDGE_KEY_RACES and BRIDGE_KEY_PLOTS to simulate several servers.
 // Sends boards, records, a heat and heartbeats, asserting the API answers. Ctrl+C simulates a crash (no server.stopping).
 require('dotenv').config();
 const assert = require('assert');

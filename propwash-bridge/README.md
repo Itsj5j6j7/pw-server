@@ -9,22 +9,23 @@ The mod only **sends**; the API never calls the mod. It does three things: a hea
 ```
                  ┌─ Velocity (online-mode, modern forwarding) ─┐
                  │                                              │
-     ┌───────────┼──────────────┬───────────────┬───────────────┤
-     ▼           ▼              ▼               ▼
-  Hub (Paper)  fpv            plots           smp (future)
-  no bridge    bridge         bridge          bridge
-               key "fpv"      key "plots"     key "smp"
-                  │              │               │
-                  └──────────────┴───────┬───────┘
+     ┌───────────┼──────────────┬──────────────┬──────────────┬──────────────┤
+     ▼           ▼              ▼              ▼              ▼
+  Hub (Paper)  freestyle      races          plots          smp (future)
+  no bridge    bridge         bridge         bridge         bridge
+               key            key            key            key
+               "freestyle"    "races"        "plots"        "smp"
+                  │              │              │              │
+                  └──────────────┴──────┬───────┴──────────────┘
                                          │ HTTP, Bearer <key of that server>
                                          ▼
                               http://127.0.0.1:3006/v1  (bridge API, same machine)
 ```
 
-- The **same `.jar`** goes on every Fabric backend with Propwash (`fpv`, `plots`, `smp`). Not on Velocity (no dimensions, no Propwash), not on the hub (Paper), not on clients.
+- The **same `.jar`** goes on every Fabric backend with Propwash (`freestyle`, `races`, `plots`, `smp`). Not on Velocity (no dimensions, no Propwash), not on the hub (Paper), not on clients.
 - Each backend has a **different API key**. The key is the server identity: the mod never sends a server id, the API maps key → server and tags everything with it. Copying a config to another server without changing the key makes the second one overwrite the first one's status.
 - Nothing server-specific is hardcoded (no server names, course ids or dimensions). A server without courses (`plots`) just sends heartbeats, `server.started`, `server.stopping` and an empty `courses.sync`.
-- Courses are identified by Propwash's course UUID (0.6.0+), stable across renumbering; the number (`#3`) is only for display, so `fpv` #3 and `plots` #3 never mix. `/link` is global: linking once on any server covers all of them.
+- Courses are identified by Propwash's course UUID (0.6.0+), stable across renumbering; the number (`#3`) is only for display, so `freestyle` #3 and `races` #3 never mix. `/link` is global: linking once on any server covers all of them.
 
 ## Build
 
@@ -58,7 +59,7 @@ Drop the jar into `mods/` of every Fabric backend with Propwash. On first start 
 | `queueMax` | In-memory queue cap |
 
 - `PROPWASH_BRIDGE_API_KEY` and `PROPWASH_BRIDGE_API_URL`, when set in the server's environment, win over `apiKey` and `apiUrl`. The community server's deploy puts the key there, so it never sits in a file.
-- On startup the log shows `Bridge connected as FPV (fpv)`; a different name means the key belongs to another server. An empty key logs one warning and the mod stays idle.
+- On startup the log shows `Bridge connected as Freestyle (freestyle)`; a different name means the key belongs to another server. An empty key logs one warning and the mod stays idle.
 - The key is never logged, only its last 4 characters.
 - Players hidden with Vanish (`/vanish`) are left out of the heartbeat, `onlinePlayers` included.
 
@@ -117,6 +118,6 @@ Run the API from [`../bot`](../bot) and point a dev server at it: `./gradlew run
 Once it runs on two servers, check that:
 
 - Each server shows up as its own block in the Discord status message, and stopping one marks only that one offline.
-- A course `#3` on `fpv` and a course `#3` on `plots` have separate leaderboards.
+- A course `#3` on `freestyle` and a course `#3` on `races` have separate leaderboards.
 - Moving between servers through Velocity doesn't show the player twice for more than one heartbeat.
 - `/link` on one server, then a record on the other: the player shows up linked.

@@ -27,7 +27,7 @@ cp .env.example .env
 
 Fill in:
 
-- `.env`: `CLIENT_TOKEN`, `TYPESAFE_API_KEY` (FAQ answers), and one API key per Minecraft server (`BRIDGE_KEY_FPV`, `BRIDGE_KEY_PLOTS`, `BRIDGE_KEY_HUB`; generate each with `openssl rand -hex 32`). With a single server, use `BRIDGE_API_KEY` and leave `bridge.servers` empty.
+- `.env`: `CLIENT_TOKEN`, `TYPESAFE_API_KEY` (FAQ answers), and one API key per Minecraft server (`BRIDGE_KEY_FREESTYLE`, `BRIDGE_KEY_RACES`, `BRIDGE_KEY_PLOTS`, `BRIDGE_KEY_HUB`; generate each with `openssl rand -hex 32`). With a single server, use `BRIDGE_API_KEY` and leave `bridge.servers` empty.
 - `src/config.js`: channel, role and category IDs; the `bridge` block (port, servers, channels). Versioned: edit it and commit, it holds no secrets (API keys stay in `.env`). Every field is commented in the file.
 
 `.env` is gitignored. Never commit it.
@@ -60,7 +60,7 @@ The API listens on `bridge.host:bridge.port` (default `127.0.0.1:3006`), on the 
 With `propwash-api` running and the keys in `.env`:
 
 ```bash
-node scripts/fake-mod.js http://127.0.0.1:3006 BRIDGE_KEY_FPV
+node scripts/fake-mod.js http://127.0.0.1:3006 BRIDGE_KEY_FREESTYLE
 ```
 
 It simulates a server (start, heartbeats, a race, a record) and checks the responses. Ctrl+C simulates a crash: the server shows as offline after 90 s.
@@ -73,8 +73,8 @@ Contract between the [bridge mod](../propwash-bridge) and `propwash-api`. The mo
 
 ### Servers
 
-- One key per server: `openssl rand -hex 32`, stored in the bot's `.env` (`BRIDGE_KEY_FPV`, `BRIDGE_KEY_PLOTS`...).
-- One entry per server in `config.bridge.servers` (`fpv: { name: 'FPV', keyEnv: 'BRIDGE_KEY_FPV', maps: {...} }`).
+- One key per server: `openssl rand -hex 32`, stored in the bot's `.env` (`BRIDGE_KEY_FREESTYLE`, `BRIDGE_KEY_RACES`, `BRIDGE_KEY_PLOTS`...).
+- One entry per server in `config.bridge.servers` (`freestyle: { name: 'Freestyle', keyEnv: 'BRIDGE_KEY_FREESTYLE', maps: {...} }`).
 - `status: false` for a server running the link-only build (the hub, branch `hub-link`): it can use `/link/start` but sends no heartbeat, so it's left out of the status message.
 - The API runs as its own pm2 process (`propwash-api`, `src/bridge/index.js`), separate from the Discord bot (`propwash`). Restarting the bot doesn't interrupt the mods; both share the SQLite file `bridge.db`.
 - Adding the SMP later: new key, new entry, `pm2 restart propwash-api propwash`, and the same `.jar` on the SMP with that key.
@@ -159,10 +159,10 @@ Every error response has this shape:
 #### `GET /v1/ping`
 
 ```json
-{ "ok": true, "server": { "id": "fpv", "name": "FPV" }, "serverTime": 1760190000000, "apiVersion": 2 }
+{ "ok": true, "server": { "id": "freestyle", "name": "Freestyle" }, "serverTime": 1760190000000, "apiVersion": 2 }
 ```
 
-`server` is the server the bot matched to the key. Log it on startup: `Bridge connected as FPV (fpv)`. In single-server mode it's `{ "id": "main", ... }`. Treat it as informational: the mod doesn't need to store it or send it back.
+`server` is the server the bot matched to the key. Log it on startup: `Bridge connected as Freestyle (freestyle)`. In single-server mode it's `{ "id": "main", ... }`. Treat it as informational: the mod doesn't need to store it or send it back.
 
 #### `POST /v1/heartbeat`
 
@@ -229,7 +229,7 @@ Response: `{ "ok": true }`.
 - `409 already_linked`: the account is already linked (from any server). To change it, the player first runs `/unlink` on Discord.
 - `429`: more than 5 codes per minute for that UUID, counted across all servers.
 
-A new code invalidates the player's previous one, even if it was requested on another server. Each code works once and expires after 10 minutes. The link is global: linking once on `fpv` also covers `plots` and the SMP.
+A new code invalidates the player's previous one, even if it was requested on another server. Each code works once and expires after 10 minutes. The link is global: linking once on `freestyle` also covers `races`, `plots` and the SMP.
 
 ---
 
@@ -373,10 +373,10 @@ Once per key, each one must answer with its own `server`:
 
 ```bash
 API=http://127.0.0.1:3006/v1
-for KEY in $KEY_FPV $KEY_PLOTS; do
+for KEY in $KEY_FREESTYLE $KEY_RACES $KEY_PLOTS; do
   curl -s -H "Authorization: Bearer $KEY" $API/ping; echo
 done
 
-curl -s -X POST -H "Authorization: Bearer $KEY_FPV" -H "Content-Type: application/json" $API/heartbeat \
+curl -s -X POST -H "Authorization: Bearer $KEY_FREESTYLE" -H "Content-Type: application/json" $API/heartbeat \
   -d '{"onlinePlayers":1,"maxPlayers":20,"players":[{"uuid":"069a79f4-44e9-4726-a5be-fca90e38aaf5","name":"Javi","dimension":"propwash:arena"}]}'
 ```

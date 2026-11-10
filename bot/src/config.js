@@ -28,9 +28,9 @@ const config = {
         port: 3006,
         databasePath: './bridge.db', // SQLite, shared by the bot and the API processes. Created on first start.
         servers: { // One entry per Minecraft server with the bridge mod; the key of each entry is the server id. Empty: BRIDGE_API_KEY is a single server.
-            fpv: {
-                name: 'FPV', // Shown in Discord when there is more than one server.
-                keyEnv: 'BRIDGE_KEY_FPV', // .env variable holding this server's API key (openssl rand -hex 32).
+            freestyle: {
+                name: 'Freestyle', // Shown in Discord when there is more than one server.
+                keyEnv: 'BRIDGE_KEY_FREESTYLE', // .env variable holding this server's API key (openssl rand -hex 32).
                 maps: { // Dimension -> display name for this server only, takes precedence over bridge.maps.
                     'maps:tutorial': 'Tutorial',
                     'maps:flowmap': 'Flowmap',
@@ -41,6 +41,10 @@ const config = {
                     'maps:mosslorn': 'Mosslorn',
                     'maps:mountains': 'Mountain Range'
                 }
+            },
+            races: { // Organized races. No maps yet: names come from bridge.maps or the dimension id.
+                name: 'Races',
+                keyEnv: 'BRIDGE_KEY_RACES'
             },
             plots: {
                 name: 'Plots',

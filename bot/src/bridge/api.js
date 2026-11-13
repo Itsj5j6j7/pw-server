@@ -1,6 +1,8 @@
 const http = require('http');
 const crypto = require('crypto');
 const config = require('../config');
+const shopItems = require('../shop-items');
+const { orderItems } = require('../shop/items');
 const store = require('./store');
 const servers = require('./servers');
 const status = require('./status');
@@ -183,6 +185,16 @@ const kofi = async (req, res) => {
         amount: String(data.amount ?? '?'), currency: String(data.currency ?? '?'), type: String(data.type ?? '?'), months,
         message: data.is_public === false ? null : (data.message ? String(data.message).slice(0, 500) : null)
     };
+    if (data.type === 'Shop Order') {
+        // Pets and trails (utils/Shop): never supporter time. The order is kept until its items are given.
+        const { known, unknown } = orderItems(data, shopItems);
+        if (store.addKofiPayment({ ...payment, months: 0 }) && known.length + unknown.length > 0) {
+            store.addShopOrder({ id: payment.id, discordId, name: payment.name, items: [
+                ...known.map(({ code }) => ({ code, known: true })), ...unknown.map((code) => ({ code, known: false }))
+            ] });
+        }
+        return send(res, 200, { ok: true });
+    }
     if (store.addKofiPayment(payment) && discordId && months > 0) store.addSupporterMonths(discordId, months);
     send(res, 200, { ok: true });
 };

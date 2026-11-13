@@ -9,7 +9,7 @@ const status = require('./status');
 const rest = require('./rest');
 const { buildRaceResult, buildRecord } = require('./render');
 
-const API_VERSION = 1;
+const API_VERSION = 2;
 const MAX_BODY = 64 * 1024;
 const MAX_EVENTS = 50;
 const HOUR = 3600 * 1000;
@@ -24,7 +24,16 @@ const optional = (check) => (v) => v === undefined || v === null || check(v);
 const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(v);
 const isDimension = (v) => typeof v === 'string' && /^[a-z0-9_.-]+:[a-z0-9_./-]{1,100}$/.test(v);
 const isPlayer = (p) => isObj(p) && isUuid(p.uuid) && typeof p.name === 'string' && /^\w{1,16}$/.test(p.name);
-const isCourse = (c) => isObj(c) && isInt(c.id) && isStr(c.name, 64) && isDimension(c.dimension) && isInt(c.layout) && isInt(c.laps);
+const isOneOf = (...values) => (v) => values.includes(v);
+// laps: -1 pilot's choice, 0 endless.
+const isCourse = (c) => isObj(c) && isUuid(c.id) && isInt(c.number) && isStr(c.name, 64) && isDimension(c.dimension) && isInt(c.layout)
+    && Number.isSafeInteger(c.laps) && c.laps >= -1 && isOneOf('laps', 'point_to_point')(c.mode) && optional((v) => isStr(v, 32))(c.ownerName);
+const isEntry = (e) => isObj(e) && isPositive(e.rank) && isPlayer(e.player) && isPositive(e.nanos) && optional(isInt)(e.date)
+    && isStr(e.frame) && Array.isArray(e.assist) && e.assist.length <= 20 && e.assist.every((reason) => isStr(reason, 64))
+    && optional((v) => typeof v === 'boolean')(e.otherRules);
+const isBoard = (b) => isObj(b) && isOneOf('lap', 'race')(b.kind) && isOneOf('clean', 'assisted')(b.category) && optional(isStr)(b.frame)
+    && (b.kind === 'race' ? isPositive(b.laps) : b.laps === undefined || b.laps === null) && isInt(b.total)
+    && Array.isArray(b.entries) && b.entries.length <= 50 && b.entries.every(isEntry);
 
 const VERSION_FIELDS = ['mcVersion', 'loader', 'loaderVersion', 'modVersion', 'propwashVersion'];
 const hasVersions = (d) => VERSION_FIELDS.every((field) => optional(isStr)(d[field]));
@@ -36,19 +45,22 @@ const isHeartbeat = (b) => isObj(b) && hasVersions(b) && isInt(b.onlinePlayers) 
 
 const isResult = (r) => isObj(r) && isPlayer(r.player) && typeof r.assisted === 'boolean'
     && (r.status === 'finished' ? isPositive(r.place) && isPositive(r.totalNanos) : r.status === 'dnf' && r.place === null)
-    && optional(isPositive)(r.bestLapNanos) && optional(isStr)(r.frame);
+    && optional(isPositive)(r.bestLapNanos) && optional(isStr)(r.frame) && optional(isPositive)(r.laps);
 
 const VALIDATORS = {
     'server.started': (d) => hasVersions(d) && optional(isInt)(d.maxPlayers),
     'server.stopping': (d) => optional((v) => ['stop', 'restart', 'unknown'].includes(v))(d.reason),
-    'race.best_lap': (d) => isCourse(d.course) && isPlayer(d.player) && isStr(d.frame) && isPositive(d.lapNanos)
-        && ['personal_best', 'class_record', 'course_record'].includes(d.outcome)
-        && optional((p) => isObj(p) && isStr(p.name) && isPositive(p.nanos))(d.previousRecord),
+    'race.record': (d) => isCourse(d.course) && isOneOf('course', 'class', 'race')(d.scope) && isPlayer(d.player) && isStr(d.frame)
+        && isPositive(d.nanos) && (d.scope === 'race' ? isPositive(d.laps) : optional(isPositive)(d.laps)),
     'race.result': (d) => isId(d.heatId) && isCourse(d.course) && typeof d.multiplayer === 'boolean'
         && Array.isArray(d.results) && d.results.length >= 1 && d.results.length <= 16 && d.results.every(isResult),
-    'leaderboard.reset': (d) => isInt(d.courseId) && optional(isStr)(d.playerName),
-    'course.removed': (d) => isInt(d.courseId)
+    'course.board': (d) => isCourse(d.course) && Array.isArray(d.boards) && d.boards.length <= 100 && d.boards.every(isBoard),
+    'course.removed': (d) => isUuid(d.courseId),
+    'courses.sync': (d) => Array.isArray(d.courseIds) && d.courseIds.length <= 10000 && d.courseIds.every(isUuid)
 };
+
+// The board a record goes on, as store.board() looks it up.
+const recordBoard = ({ scope, frame, laps }) => scope === 'race' ? { kind: 'race', laps } : { kind: 'lap', frame: scope === 'class' ? frame : null };
 
 // "<server>:<event id>" from the last hour, so retries are answered as duplicates.
 const seen = new Map();
@@ -59,18 +71,25 @@ const withServer = (server, data) => ({ ...data, course: { ...data.course, serve
 const HANDLERS = {
     'server.started': (server, { data }) => status.started(server, data),
     'server.stopping': (server) => status.stopping(server),
-    'race.best_lap': (server, { data, ts }) => {
+    // The mod sends the record before the board it lands on, so the stored board still has the record that was beaten.
+    'race.record': (server, { data }) => {
+        const stored = store.getCourse(server.id, data.course.id);
+        const previous = stored && store.board(stored, recordBoard(data))?.entries[0];
         store.upsertCourse(server.id, data.course);
-        if (!store.submitLap(server.id, data.course, data.player, data.frame, data.lapNanos, ts)) return;
-        if (data.outcome !== 'personal_best') rest.post(config.bridge.channels.records, (isMember) => buildRecord(isMember, withServer(server, data)));
+        if (previous && previous.nanos <= data.nanos) return; // already on the board: a replay
+        rest.post(config.bridge.channels.records, (isMember) => buildRecord(isMember, withServer(server, { ...data, previous })));
     },
+    'course.board': (server, { data }) => store.upsertCourse(server.id, data.course, data.boards),
     'race.result': (server, { data, ts }) => {
         store.upsertCourse(server.id, data.course);
         if (!store.saveRace(server.id, data, ts)) return;
         if (data.multiplayer || config.bridge.raceLog.includeSolo) rest.post(config.bridge.channels.races, (isMember) => buildRaceResult(isMember, withServer(server, data)));
     },
-    'leaderboard.reset': (server, { data }) => store.resetBoard(server.id, data.courseId, data.playerName),
-    'course.removed': (server, { data }) => store.removeCourse(server.id, data.courseId)
+    'course.removed': (server, { data }) => store.removeCourse(server.id, data.courseId),
+    'courses.sync': (server, { data }) => {
+        const removed = store.syncCourses(server.id, data.courseIds);
+        if (removed) console.info(`Removed ${removed} course${removed === 1 ? '' : 's'} of ${server.id} that Propwash no longer has.`);
+    }
 };
 
 const send = (res, code, body, headers = {}) => {

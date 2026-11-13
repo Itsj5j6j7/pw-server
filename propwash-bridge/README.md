@@ -1,36 +1,37 @@
 # Propwash Bridge
 
-Server-side Fabric mod that reports server status, records and course changes from Propwash to the bridge API in [`../bot`](../bot). The API contract (endpoints, events, errors) is in the [bot README](../bot/README.md#bridge-api).
+Server-side Fabric mod that reports server status, records, race results and leaderboards from Propwash to the bridge API in [`../bot`](../bot). The API contract (endpoints, events, errors) is in the [bot README](../bot/README.md#bridge-api).
 
-The mod only **sends**; the API never calls the mod. It does three things: a heartbeat every 30 s, a queue of events (start, stop, records, course changes), and the in-game `/link` command.
+The mod only **sends**; the API never calls the mod. It does three things: a heartbeat every 30 s, a queue of events (start, stop, records, race results, Propwash's leaderboards), and the in-game `/link` command.
 
 ## Servers and keys
 
 ```
                  ┌─ Velocity (online-mode, modern forwarding) ─┐
                  │                                              │
-     ┌───────────┼──────────────┬───────────────┬───────────────┤
-     ▼           ▼              ▼               ▼
-  Hub (Paper)  fpv            plots           smp (future)
-  no bridge    bridge         bridge          bridge
-               key "fpv"      key "plots"     key "smp"
-                  │              │               │
-                  └──────────────┴───────┬───────┘
+     ┌───────────┼──────────────┬──────────────┬──────────────┬──────────────┤
+     ▼           ▼              ▼              ▼              ▼
+  Hub (Paper)  freestyle      races          plots          smp (future)
+  no bridge    bridge         bridge         bridge         bridge
+               key            key            key            key
+               "freestyle"    "races"        "plots"        "smp"
+                  │              │              │              │
+                  └──────────────┴──────┬───────┴──────────────┘
                                          │ HTTP, Bearer <key of that server>
                                          ▼
                               http://127.0.0.1:3006/v1  (bridge API, same machine)
 ```
 
-- The **same `.jar`** goes on every Fabric backend with Propwash (`fpv`, `plots`, `smp`). Not on Velocity (no dimensions, no Propwash), not on the hub (Paper), not on clients.
+- The **same `.jar`** goes on every Fabric backend with Propwash (`freestyle`, `races`, `plots`, `smp`). Not on Velocity (no dimensions, no Propwash), not on the hub (Paper), not on clients.
 - Each backend has a **different API key**. The key is the server identity: the mod never sends a server id, the API maps key → server and tags everything with it. Copying a config to another server without changing the key makes the second one overwrite the first one's status.
-- Nothing server-specific is hardcoded (no server names, course ids or dimensions). A server without courses (`plots`) just sends heartbeats, `server.started` and `server.stopping`.
-- Course ids are per server: Propwash numbers each instance's courses from 1, so `fpv` #3 and `plots` #3 are different courses with separate leaderboards. `/link` is global: linking once on any server covers all of them.
+- Nothing server-specific is hardcoded (no server names, course ids or dimensions). A server without courses (`plots`) just sends heartbeats, `server.started`, `server.stopping` and an empty `courses.sync`.
+- Courses are identified by Propwash's course UUID (0.6.0+), stable across renumbering; the number (`#3`) is only for display, so `freestyle` #3 and `races` #3 never mix. `/link` is global: linking once on any server covers all of them.
 
 ## Build
 
 Propwash isn't published on any maven, so the build compiles against the local jar:
 
-1. Copy `propwash-fabric-26.3-0.5.2.jar` and the Vanish mod jar (`vanish-1.6.16+26.3.jar`, from Modrinth, compile-only) into `libs/` (gitignored: Propwash is PolyForm Shield).
+1. Copy `propwash-fabric-26.3-0.6.0-rc.3.jar` (or the 0.6.0 release, only one Propwash jar) and the Vanish mod jar (`vanish-1.6.16+26.3.jar`, from Modrinth, compile-only) into `libs/` (gitignored: Propwash is PolyForm Shield).
 2. `./gradlew build` → `build/libs/propwash-bridge-<version>.jar`.
 
 The GitHub workflow fails without that jar.
@@ -58,7 +59,7 @@ Drop the jar into `mods/` of every Fabric backend with Propwash. On first start 
 | `queueMax` | In-memory queue cap |
 
 - `PROPWASH_BRIDGE_API_KEY` and `PROPWASH_BRIDGE_API_URL`, when set in the server's environment, win over `apiKey` and `apiUrl`. The community server's deploy puts the key there, so it never sits in a file.
-- On startup the log shows `Bridge connected as FPV (fpv)`; a different name means the key belongs to another server. An empty key logs one warning and the mod stays idle.
+- On startup the log shows `Bridge connected as Freestyle (freestyle)`; a different name means the key belongs to another server. An empty key logs one warning and the mod stays idle.
 - The key is never logged, only its last 4 characters.
 - Players hidden with Vanish (`/vanish`) are left out of the heartbeat, `onlinePlayers` included.
 
@@ -67,7 +68,8 @@ Players run `/link` in game to get a code for `/link <code>` on Discord ("alread
 ## Requirements
 
 - **Minecraft 26.3, Fabric only** (Loader 0.19.5+, Fabric API), Java 25. Server only (`"environment": "server"`).
-- **Not a Propwash add-on.** Propwash treats as add-ons every mod that `depends`/`recommends`/`suggests` on it and compares that list with the client's. The bridge only declares `"breaks": { "propwash": "<0.5.0" }` and checks at startup that Propwash is loaded, so players without the bridge join normally.
+- **Propwash 0.6.0 or newer** (race API 1.7.0; the RCs count). Older Propwash: use bridge 0.4.0.
+- **Not a Propwash add-on.** Propwash treats as add-ons every mod that `depends`/`recommends`/`suggests` on it and compares that list with the client's. The bridge only declares `"breaks": { "propwash": "<0.6.0-" }` and checks at startup that Propwash is loaded with API 1.7.0+, so players without the bridge join normally.
 - No ports opened: the mod only makes outgoing requests to the API.
 
 ### Velocity and UUIDs
@@ -82,15 +84,17 @@ Players run `/link` in game to get a code for `/link <code>` on Discord ("alread
 
 Minecraft data comes from the server: players and dimensions from the player list, TPS/MSPT from tick times, start and stop from `ServerLifecycleEvents`.
 
-Propwash's public API (1.6.0) **has no race events**, so records come from one mixin on internal classes:
+Race data comes from Propwash's public race API (`PropwashApi.race()` and `RaceEvents`, API 1.7.0), with no mixins:
 
-| Event | Hook |
+| Event | Source |
 |---|---|
-| `race.best_lap` | `@WrapMethod` on `CourseRegistry#submitLap(Course, ServerPlayer, String frame, long lapNanos)`: reads the course and class records before and the `Leaderboard.Outcome` after. Sent only when a non-assisted lap improves a time |
-| `leaderboard.reset` | `CourseRegistry#resetLeaderboard` |
-| `course.removed` | `CourseRegistry#deleteCourse` |
+| `race.record` | `LAP_COMPLETED` with `classRecord` (scope `class`, or `course` with `courseRecord`), and `PERSONAL_BEST` of a clean race time that ranks 1st (scope `race`, not on point-to-point courses, where the run is the lap) |
+| `race.result` | `RACE_FINISHED`, one per pilot with their heat place. The mod groups them per course: place 1 opens a heat, and it's sent once nobody finished it for 60 s (or on shutdown). Place 0 (no lobby) is sent at once as a solo race. Best lap of each pilot from their `LAP_COMPLETED` events |
+| `course.board` | `RaceData#leaderboard`: top 10 of the current layout, lap times (all classes and each class, clean; all classes, assisted) and race times per lap count (clean and assisted). Sent at the end of the tick in which `PERSONAL_BEST` or a course event touched it, so after its `race.record`, and every 30 s for any board whose content changed (a leaderboard reset has no event) |
+| `courses.sync` | 5 s after startup: every course UUID on this server, so the bot drops the ones deleted or renumbered while the bridge was off |
+| `course.removed` | `COURSE_DELETED` |
 
-`race.result` isn't sent yet: it needs heats, places and dropouts from internals about to change. It comes back once Propwash publishes race events (expected in 0.6.0); the API already accepts it.
+Propwash doesn't say when a heat is over nor who crashed out, so heats list only finishers, and a 2-pilot heat with a single finisher goes out as a solo race.
 
 Sender rules (`Sender.java`):
 
@@ -98,22 +102,22 @@ Sender rules (`Sender.java`):
 2. A single sender thread, so events arrive in order. Every `batchMs` it posts up to 50 events; every `heartbeatSeconds`, a heartbeat (on a timer, so it keeps going while an empty server is paused).
 3. Each event gets its `id` when created and keeps it across retries. What the API rejects (`400` or `rejected`) isn't retried.
 4. API down: the server runs as normal; retries with backoff up to 60 s. `401`: warn and retry every minute. `413`: split the batch. `429`: wait `Retry-After`.
-5. Queue full: drop the oldest events first, keeping `race.best_lap` as long as possible.
-6. On startup: `GET /v1/ping`, then `server.started`. On shutdown: `server.stopping` and flush the queue for up to ~3 s.
+5. Queue full: drop the oldest events first, keeping `race.record` and `race.result` as long as possible.
+6. On startup: `GET /v1/ping`, then `server.started`. On shutdown: pending heats, `server.stopping` and flush the queue for up to ~3 s.
 
 ## Propwash updates
 
-The mixin is checked against 0.5.1 and 0.5.2 (`submitLap`, `resetLeaderboard` and `deleteCourse` are identical in both). It's internal code, so it can break in any release: keep every server on the same Propwash version and, after updating, look for Mixin errors mentioning `propwash-bridge` in the server log. The mixin config is `required: false`, so the server still starts; only the affected events stop arriving.
+Only the public API is used, so Propwash updates that keep API 1.x don't need a new bridge. Checked against 0.6.0-rc.2 and rc.3 (rc.3 adds `otherRules` on board entries: flown under different server race rules). Propwash also writes its own copy of this data to `world/propwash/race-data/` (`courses.json` and `leaderboards/<uuid>.json`); the bridge doesn't read it.
 
 > Propwash (everything except its API) is licensed under PolyForm Shield 1.0.0. Read its `LICENSE` or ask the author before distributing the bridge.
 
 ## Testing
 
-Run the API from [`../bot`](../bot) and point a dev server at it: `./gradlew runServer` with the Propwash jar in `run/mods/` and the key of one of the API's servers in `run/config/propwash-bridge.json`.
+Run the API from [`../bot`](../bot) and point a dev server at it: `./gradlew runServer` with the Propwash jar in `run/mods/` and the key of one of the API's servers in `run/config/propwash-bridge.json` (`PROPWASH_BRIDGE_API_*` don't reach the server started by Gradle's daemon). Courses from an older world get their UUID on the first start and their board arrives 5 s later.
 
 Once it runs on two servers, check that:
 
 - Each server shows up as its own block in the Discord status message, and stopping one marks only that one offline.
-- A course `#3` on `fpv` and a course `#3` on `plots` have separate leaderboards.
+- A course `#3` on `freestyle` and a course `#3` on `races` have separate leaderboards.
 - Moving between servers through Velocity doesn't show the player twice for more than one heartbeat.
 - `/link` on one server, then a record on the other: the player shows up linked.

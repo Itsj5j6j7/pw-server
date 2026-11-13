@@ -1,4 +1,4 @@
-const { ChatInputCommandInteraction, ApplicationCommandOptionType, escapeMarkdown } = require("discord.js");
+const { ChatInputCommandInteraction, ApplicationCommandOptionType } = require("discord.js");
 const DiscordBot = require("../../client/DiscordBot");
 const ApplicationCommand = require("../../structure/ApplicationCommand");
 const config = require("../../config");
@@ -13,25 +13,19 @@ const courseOption = { name: 'course', description: 'The course', type: Applicat
 module.exports = new ApplicationCommand({
     command: {
         name: 'racedata',
-        description: 'Delete race data received from the Minecraft server',
+        description: 'Delete race data the bot keeps (leaderboards are reset in game)',
         type: 1,
         contexts: [0],
         options: [
             {
-                name: 'reset-leaderboard',
-                description: 'Clear the current leaderboard of a course, or only one player\'s times',
-                type: ApplicationCommandOptionType.Subcommand,
-                options: [courseOption, { name: 'player', description: 'Minecraft name: only clear this player\'s times', type: ApplicationCommandOptionType.String, max_length: 16 }]
-            },
-            {
                 name: 'delete-course',
-                description: 'Delete a course and all its leaderboards',
+                description: 'Remove a course from Discord (back when it changes in game or its server restarts)',
                 type: ApplicationCommandOptionType.Subcommand,
                 options: [courseOption]
             },
             {
                 name: 'wipe',
-                description: 'Delete every course and leaderboard',
+                description: 'Delete every course and leaderboard (each server sends its courses again when it restarts)',
                 type: ApplicationCommandOptionType.Subcommand,
                 options: [
                     { name: 'confirm', description: 'This cannot be undone', type: ApplicationCommandOptionType.Boolean, required: true },
@@ -74,15 +68,7 @@ module.exports = new ApplicationCommand({
         const course = store.courseByRef(interaction.options.getString('course'));
         if (!course) return interaction.reply(notice(config.emojis.no, 'Unknown course, pick one from the list.'));
 
-        if (subcommand === 'delete-course') {
-            store.removeCourse(course.server, course.id);
-            return interaction.reply(notice(config.emojis.yes, `Deleted **${courseTitle(course)}** and its leaderboards.`));
-        }
-
-        const player = interaction.options.getString('player');
-        store.resetBoard(course.server, course.id, player);
-        await interaction.reply(notice(config.emojis.yes, player
-            ? `Cleared **${escapeMarkdown(player)}**'s times on **${courseTitle(course)}**.`
-            : `Cleared the leaderboard of **${courseTitle(course)}**.`));
+        store.removeCourse(course.server, course.id);
+        await interaction.reply(notice(config.emojis.yes, `Deleted **${courseTitle(course)}** and its leaderboards.`));
     }
 }).toJSON();

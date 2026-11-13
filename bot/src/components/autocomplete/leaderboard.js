@@ -11,14 +11,16 @@ module.exports = new AutocompleteComponent({
         let choices;
 
         if (focused.name === 'course') {
-            // The #id tells apart courses with the same (or no) name; the [server] tag, courses of different servers with the same id.
+            // The #number tells apart courses with the same (or no) name; the [server] tag, courses of different servers with the same number.
             choices = store.courses().map((course) => ({
-                name: `${servers.multi ? `[${servers.get(course.server)?.name ?? course.server}] ` : ''}#${course.id} ${course.name || 'Unnamed'} — ${mapName(course.dimension, course.server)}`,
+                name: `${servers.multi ? `[${servers.get(course.server)?.name ?? course.server}] ` : ''}#${course.number} ${course.name || 'Unnamed'} — ${mapName(course.dimension, course.server)}`,
                 value: `${course.server}:${course.id}`
             }));
         } else {
             const course = store.courseByRef(interaction.options.get('course')?.value);
-            choices = (course ? store.frames(course) : []).map((frame) => ({ name: config.bridge.frames[frame] ?? frame, value: frame }));
+            choices = !course ? [] : focused.name === 'race'
+                ? store.raceLaps(course).map((laps) => ({ name: `${laps} lap${laps === 1 ? '' : 's'}`, value: laps }))
+                : store.frames(course).map((frame) => ({ name: config.bridge.frames[frame] ?? frame, value: frame }));
         }
 
         const query = focused.value.toLowerCase();

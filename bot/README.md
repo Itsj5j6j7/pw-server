@@ -27,7 +27,7 @@ cp .env.example .env
 
 Fill in:
 
-- `.env`: `CLIENT_TOKEN`, `TYPESAFE_API_KEY` (FAQ answers), and one API key per Minecraft server (`BRIDGE_KEY_FPV`, `BRIDGE_KEY_PLOTS`, `BRIDGE_KEY_HUB`; generate each with `openssl rand -hex 32`). With a single server, use `BRIDGE_API_KEY` and leave `bridge.servers` empty.
+- `.env`: `CLIENT_TOKEN`, `TYPESAFE_API_KEY` (FAQ answers), and one API key per Minecraft server (`BRIDGE_KEY_FREESTYLE`, `BRIDGE_KEY_RACES`, `BRIDGE_KEY_PLOTS`, `BRIDGE_KEY_HUB`; generate each with `openssl rand -hex 32`). With a single server, use `BRIDGE_API_KEY` and leave `bridge.servers` empty.
 - `src/config.js`: channel, role and category IDs; the `bridge` block (port, servers, channels). Versioned: edit it and commit, it holds no secrets (API keys stay in `.env`). Every field is commented in the file.
 
 `.env` is gitignored. Never commit it.
@@ -60,7 +60,7 @@ The API listens on `bridge.host:bridge.port` (default `127.0.0.1:3006`), on the 
 With `propwash-api` running and the keys in `.env`:
 
 ```bash
-node scripts/fake-mod.js http://127.0.0.1:3006 BRIDGE_KEY_FPV
+node scripts/fake-mod.js http://127.0.0.1:3006 BRIDGE_KEY_FREESTYLE
 ```
 
 It simulates a server (start, heartbeats, a race, a record) and checks the responses. Ctrl+C simulates a crash: the server shows as offline after 90 s.
@@ -73,8 +73,8 @@ Contract between the [bridge mod](../propwash-bridge) and `propwash-api`. The mo
 
 ### Servers
 
-- One key per server: `openssl rand -hex 32`, stored in the bot's `.env` (`BRIDGE_KEY_FPV`, `BRIDGE_KEY_PLOTS`...).
-- One entry per server in `config.bridge.servers` (`fpv: { name: 'FPV', keyEnv: 'BRIDGE_KEY_FPV', maps: {...} }`).
+- One key per server: `openssl rand -hex 32`, stored in the bot's `.env` (`BRIDGE_KEY_FREESTYLE`, `BRIDGE_KEY_RACES`, `BRIDGE_KEY_PLOTS`...).
+- One entry per server in `config.bridge.servers` (`freestyle: { name: 'Freestyle', keyEnv: 'BRIDGE_KEY_FREESTYLE', maps: {...} }`).
 - `status: false` for a server running the link-only build (the hub, branch `hub-link`): it can use `/link/start` but sends no heartbeat, so it's left out of the status message.
 - The API runs as its own pm2 process (`propwash-api`, `src/bridge/index.js`), separate from the Discord bot (`propwash`). Restarting the bot doesn't interrupt the mods; both share the SQLite file `bridge.db`.
 - Adding the SMP later: new key, new entry, `pm2 restart propwash-api propwash`, and the same `.jar` on the SMP with that key.
@@ -85,8 +85,8 @@ Contract between the [bridge mod](../propwash-bridge) and `propwash-api`. The mo
 | Data | Scope | Why it matters to the mod |
 |---|---|---|
 | Status, players, TPS, online/offline | **Per server** | Each server sends its own heartbeat. One going down doesn't affect the others |
-| Course ids | **Per server** | Every Propwash instance numbers its courses from 1, so `fpv` #3 and `plots` #3 are different courses. Send the id as Propwash has it; the bot stores `(server, id)` |
-| Leaderboards and records | **Per server** | Follow the course. `leaderboard.reset` and `course.removed` only touch the server of the key |
+| Courses | **Per server** | Identified by Propwash's course UUID; the bot stores `(server, uuid)`. The number (`#3`) is only shown: every Propwash instance numbers its courses from 1 |
+| Leaderboards and records | **Per server** | Follow the course. `course.board`, `course.removed` and `courses.sync` only touch the server of the key |
 | Event `id` and `heatId` deduplication | **Per server** | They only need to be unique within one server |
 | Discord ↔ Minecraft links | **Global** | Stored by UUID. `/link` on any server links the account everywhere |
 | `/link/start` rate limit | **Global**, per UUID | 5 codes/minute per player across all servers |
@@ -159,17 +159,17 @@ Every error response has this shape:
 #### `GET /v1/ping`
 
 ```json
-{ "ok": true, "server": { "id": "fpv", "name": "FPV" }, "serverTime": 1760190000000, "apiVersion": 1 }
+{ "ok": true, "server": { "id": "freestyle", "name": "Freestyle" }, "serverTime": 1760190000000, "apiVersion": 2 }
 ```
 
-`server` is the server the bot matched to the key. Log it on startup: `Bridge connected as FPV (fpv)`. In single-server mode it's `{ "id": "main", ... }`. Treat it as informational: the mod doesn't need to store it or send it back.
+`server` is the server the bot matched to the key. Log it on startup: `Bridge connected as Freestyle (freestyle)`. In single-server mode it's `{ "id": "main", ... }`. Treat it as informational: the mod doesn't need to store it or send it back.
 
 #### `POST /v1/heartbeat`
 
 ```json
 {
   "mcVersion": "26.3", "loader": "fabric", "loaderVersion": "0.19.5", "modVersion": "0.1.0",
-  "propwashVersion": "0.5.0",
+  "propwashVersion": "0.6.0",
   "onlinePlayers": 3, "maxPlayers": 20,
   "players": [
     { "uuid": "069a79f4-44e9-4726-a5be-fca90e38aaf5", "name": "Javi", "dimension": "propwash:arena" }
@@ -197,7 +197,7 @@ Response: `{ "ok": true }`.
 #### `POST /v1/events`
 
 ```json
-{ "events": [ { "id": "0b8e6f0e-5d0a-4a52-9a43-0f6f3e1e9a11", "type": "race.best_lap", "ts": 1760190000000, "data": { } } ] }
+{ "events": [ { "id": "0b8e6f0e-5d0a-4a52-9a43-0f6f3e1e9a11", "type": "race.record", "ts": 1760190000000, "data": { } } ] }
 ```
 
 | Field | Type | Notes |
@@ -229,7 +229,7 @@ Response: `{ "ok": true }`.
 - `409 already_linked`: the account is already linked (from any server). To change it, the player first runs `/unlink` on Discord.
 - `429`: more than 5 codes per minute for that UUID, counted across all servers.
 
-A new code invalidates the player's previous one, even if it was requested on another server. Each code works once and expires after 10 minutes. The link is global: linking once on `fpv` also covers `plots` and the SMP.
+A new code invalidates the player's previous one, even if it was requested on another server. Each code works once and expires after 10 minutes. The link is global: linking once on `freestyle` also covers `races`, `plots` and the SMP.
 
 ---
 
@@ -237,17 +237,22 @@ A new code invalidates the player's previous one, even if it was requested on an
 
 None of the events carries a server id: the bot takes it from the key.
 
+Version 2 (bridge 0.5.0, Propwash 0.6.0+). The bot doesn't build leaderboards: it stores the ones Propwash computes (`course.board`).
+
 #### Shared objects
 
 `course`:
 
 | Field | Type | Notes |
 |---|---|---|
-| `id` | integer ≥ 0 | Course id in **this server's** Propwash. Not unique across servers, and that's fine |
-| `name` | string (≤ 64) | Can be **empty** (`""`). The bot then shows `Course #id` |
+| `id` | UUID | Propwash's course UUID. Stable across renumbering |
+| `number` | integer ≥ 0 | Course number on **this server** (`#3`), only for display |
+| `name` | string (≤ 64) | Can be **empty** (`""`). The bot then shows `Course #number` |
 | `dimension` | string | Map the course belongs to |
-| `layout` | integer ≥ 0 | Changes when the track is edited. A higher layout starts a new leaderboard |
-| `laps` | integer ≥ 0 | Race laps (0 = free practice) |
+| `layout` | integer ≥ 0 | Changes when the track is edited; the boards are those of the current layout |
+| `laps` | integer ≥ -1 | Race laps: `-1` pilot's choice, `0` endless |
+| `mode` | string | `laps` or `point_to_point` |
+| `ownerName` | string (≤ 32) or `null` | Who built it |
 
 `player`: `{ "uuid": "…", "name": "Javi" }`
 
@@ -256,7 +261,7 @@ None of the events carries a server id: the bot takes it from the key.
 Sent on startup, after a successful `ping`. Sets **this server's** status to online.
 
 ```json
-{ "mcVersion": "26.3", "loader": "fabric", "loaderVersion": "…", "modVersion": "0.1.0", "propwashVersion": "0.5.0", "maxPlayers": 20 }
+{ "mcVersion": "26.3", "loader": "fabric", "loaderVersion": "…", "modVersion": "0.5.0", "propwashVersion": "0.6.0", "maxPlayers": 20 }
 ```
 
 All fields are optional. Send `propwashVersion` and `modVersion`: with several servers the bot uses them to warn when they run different versions.
@@ -271,45 +276,78 @@ Sent on a clean shutdown. Sets **this server's** status to offline.
 
 `reason` is optional and can be `stop`, `restart` or `unknown`.
 
-#### `race.best_lap`
+#### `course.board`
 
-Sent **only when a non-assisted lap improves a time**: the Propwash outcome is not `NONE`. Not sent for every lap.
+Propwash's leaderboards of a course, current layout, top 10 each. Sent when they change and right after startup.
 
 ```json
 {
-  "course": { "id": 3, "name": "Drone Arena", "dimension": "propwash:arena", "layout": 2, "laps": 3 },
-  "player": { "uuid": "069a79f4-44e9-4726-a5be-fca90e38aaf5", "name": "Javi" },
-  "frame": "5inch",
-  "lapNanos": 47900000000,
-  "outcome": "course_record",
-  "previousRecord": { "name": "Ana", "nanos": 48213000000 }
+  "course": { "id": "5f1c2a9e-3b7d-4e21-9c55-1a2b3c4d5e6f", "number": 3, "name": "Drone Arena", "dimension": "propwash:arena", "layout": 2, "laps": 3, "mode": "laps", "ownerName": "Javi" },
+  "boards": [
+    { "kind": "lap", "category": "clean", "frame": null, "laps": null, "total": 14, "entries": [
+      { "rank": 1, "player": { "uuid": "…", "name": "Javi" }, "nanos": 47900000000, "date": 1760190000000, "frame": "5inch", "assist": [], "otherRules": false }
+    ] },
+    { "kind": "lap", "category": "clean", "frame": "5inch", "laps": null, "total": 9, "entries": [] },
+    { "kind": "race", "category": "clean", "frame": null, "laps": 3, "total": 4, "entries": [] }
+  ]
 }
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `boards` | array (≤ 100) | Replaces everything the bot had for the course |
+| `boards[].kind` | string | `lap` (best lap) or `race` (total time of a race) |
+| `boards[].category` | string | `clean` or `assisted` |
+| `boards[].frame` | string or `null` | Drone class; `null`: all classes. The mod sends per-class boards for clean laps only |
+| `boards[].laps` | integer > 0 or `null` | Race length; required for `race`, `null` for `lap` |
+| `boards[].total` | integer ≥ 0 | Pilots on the whole board, not only the ones sent |
+| `boards[].entries` | array (≤ 50) | `rank`, `player`, `nanos`, `date` (`null` if unknown), `frame` (`""` if unknown), `assist` (assist reasons), `otherRules` (flown under different server race rules, optional) |
+
+#### `courses.sync`
+
+```json
+{ "courseIds": ["5f1c2a9e-3b7d-4e21-9c55-1a2b3c4d5e6f"] }
+```
+
+Every course of **this server**, sent once after startup. The bot deletes this server's courses that aren't listed (deleted or renumbered while the bridge was off).
+
+#### `course.removed`
+
+```json
+{ "courseId": "5f1c2a9e-3b7d-4e21-9c55-1a2b3c4d5e6f" }
+```
+
+Deletes **this server's** course and its boards.
+
+#### `race.record`
+
+A new record, sent **before** the `course.board` it lands on. The bot announces it and takes the record that was beaten from the board it still has.
+
+```json
+{ "course": { "…": "…" }, "scope": "course", "player": { "uuid": "…", "name": "Javi" }, "frame": "5inch", "nanos": 47900000000 }
 ```
 
 | Field | Type | Req. | Notes |
 |---|---|---|---|
-| `course`, `player` | objects | yes | |
+| `scope` | string | yes | `course` (best clean lap), `class` (best clean lap of `frame`) or `race` (best clean race over `laps`) |
 | `frame` | string | yes | Drone class. `""` if unknown |
-| `lapNanos` | integer > 0 | yes | Penalties included |
-| `outcome` | string | yes | `personal_best`, `class_record` or `course_record`, as **this server's** Propwash computed it |
-| `previousRecord` | `{ name, nanos }` | no | The record that was just beaten. Only meaningful for records |
+| `nanos` | integer > 0 | yes | Lap or race time |
+| `laps` | integer > 0 | for `race` | Race length |
 
-What the bot does: stores the time in that server's leaderboard for the course (one per player and class) and announces it if it's a `class_record` or `course_record`, labelled with the server name. If it already has an equal or better time for that player and class, it treats it as a retry and does nothing.
+A record that isn't better than the top of the stored board is a replay and isn't posted.
 
 #### `race.result`
 
-**Not sent by the mod yet** (waiting for Propwash's race events). The API accepts it.
-
-Sent **once per race**, when it ends: everyone finished or dropped out, or time ran out. For a solo race it's sent when the pilot crosses the line, with a single result.
+Sent **once per heat**, when it's over. A race flown outside a heat (no lobby) is sent on its own with `multiplayer: false`.
 
 ```json
 {
   "heatId": "c1f0a2b4-0000-4000-8000-000000000001",
-  "course": { "id": 3, "name": "Drone Arena", "dimension": "propwash:arena", "layout": 2, "laps": 3 },
+  "course": { "…": "…" },
   "multiplayer": true,
   "results": [
-    { "place": 1, "player": { "uuid": "…", "name": "Javi" }, "status": "finished", "totalNanos": 143200000000, "bestLapNanos": 47900000000, "frame": "5inch", "assisted": false },
-    { "place": null, "player": { "uuid": "…", "name": "Luis" }, "status": "dnf", "totalNanos": null, "bestLapNanos": null, "frame": null, "assisted": false }
+    { "place": 1, "player": { "uuid": "…", "name": "Javi" }, "status": "finished", "totalNanos": 143200000000, "bestLapNanos": 47900000000, "laps": 3, "frame": "5inch", "assisted": false },
+    { "place": 2, "player": { "uuid": "…", "name": "Ana" }, "status": "finished", "totalNanos": 145800000000, "laps": 3, "frame": "5inch", "assisted": true }
   ]
 }
 ```
@@ -317,33 +355,17 @@ Sent **once per race**, when it ends: everyone finished or dropped out, or time 
 | Field | Type | Req. | Notes |
 |---|---|---|---|
 | `heatId` | string (1-64) | yes | Generated by the mod. The bot never posts the same one twice for a server |
-| `course` | object | yes | |
 | `multiplayer` | bool | yes | `false` for solo races (not posted by default) |
 | `results` | array (1-16) | yes | Sorted by place, `dnf` last |
-| `results[].status` | string | yes | `finished` or `dnf` |
+| `results[].status` | string | yes | `finished` or `dnf` (Propwash 0.6.0 doesn't report DNFs, so the mod only sends finishers) |
 | `results[].place` | integer > 0 or `null` | yes | Integer if `finished`; **`null` if `dnf`** |
 | `results[].totalNanos` | integer > 0 or `null` | yes | Required if `finished` |
 | `results[].bestLapNanos` | integer > 0 | no | Best lap within that race |
+| `results[].laps` | integer > 0 | no | Laps flown |
 | `results[].frame` | string | no | |
 | `results[].assisted` | bool | yes | Whether assists were used. The bot flags it |
 
 A race always happens on one server, so a heat never mixes pilots from different servers.
-
-#### `leaderboard.reset` (optional)
-
-```json
-{ "courseId": 3, "playerName": null }
-```
-
-With `playerName` set to `null`, the whole leaderboard of the current layout of **this server's** course is cleared. With a name, only that player's times. Same as `/propwash race leaderboard reset`.
-
-#### `course.removed` (optional)
-
-```json
-{ "courseId": 3 }
-```
-
-Deletes **this server's** course and all its leaderboards.
 
 #### Testing with curl
 
@@ -351,10 +373,10 @@ Once per key, each one must answer with its own `server`:
 
 ```bash
 API=http://127.0.0.1:3006/v1
-for KEY in $KEY_FPV $KEY_PLOTS; do
+for KEY in $KEY_FREESTYLE $KEY_RACES $KEY_PLOTS; do
   curl -s -H "Authorization: Bearer $KEY" $API/ping; echo
 done
 
-curl -s -X POST -H "Authorization: Bearer $KEY_FPV" -H "Content-Type: application/json" $API/heartbeat \
+curl -s -X POST -H "Authorization: Bearer $KEY_FREESTYLE" -H "Content-Type: application/json" $API/heartbeat \
   -d '{"onlinePlayers":1,"maxPlayers":20,"players":[{"uuid":"069a79f4-44e9-4726-a5be-fca90e38aaf5","name":"Javi","dimension":"propwash:arena"}]}'
 ```

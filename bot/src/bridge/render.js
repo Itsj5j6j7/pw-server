@@ -31,17 +31,17 @@ const mapName = (dimension, server) => servers.get(server)?.maps[dimension] ?? c
     ?? dimension.split(':').pop().split(/[_\-/]/).filter(Boolean).map((word) => word[0].toUpperCase() + word.slice(1)).join(' ');
 
 const frameName = (frame) => frame ? escapeMarkdown(config.bridge.frames[frame] ?? frame) : null;
-const courseName = (course) => course.name ? escapeMarkdown(course.name) : `Course #${course.id}`;
+const courseName = (course) => course.name ? escapeMarkdown(course.name) : `Course #${course.number}`;
+const plural = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`;
 // "FPV · Drone Arena" with several servers, "Drone Arena" with one.
 const courseTitle = (course) => (servers.multi ? `${escapeMarkdown(servers.get(course.server)?.name ?? course.server)} · ` : '') + courseName(course);
 
 // isMember(discordId) -> Promise<boolean>, so this works with a guild (bot) and with the REST API (bridge API).
 const guildMembers = (guild) => (id) => guild.members.fetch(id).then(() => true, () => false);
 
-// Mention (shown, never pinged) when the player is linked and still in the server. Without a uuid, finds it by name.
+// Mention (shown, never pinged) when the player is linked and still in the server.
 const displayPlayer = async (isMember, { uuid, name }) => {
-    const id = uuid ?? store.uuidByName(name);
-    const link = id && store.getLink(id);
+    const link = store.getLink(uuid);
     if (link && await isMember(link.discordId)) return `<@${link.discordId}>`;
     return escapeMarkdown(name);
 };
@@ -107,7 +107,8 @@ const buildRaceResult = async (isMember, { course, results }) => {
         return parts.join(' · ');
     }));
 
-    const details = [mapName(course.dimension, course.server), course.laps && `${course.laps} lap${course.laps === 1 ? '' : 's'}`, `${results.length} pilot${results.length === 1 ? '' : 's'}`];
+    const laps = results[0].laps ?? (course.laps > 0 ? course.laps : 0);
+    const details = [mapName(course.dimension, course.server), laps && plural(laps, 'lap'), plural(results.length, 'pilot')];
 
     return payload(new ContainerBuilder()
         .setAccentColor(COLORS.accent)
@@ -119,43 +120,67 @@ const buildRaceResult = async (isMember, { course, results }) => {
         .addTextDisplayComponents(text(lines.join('\n'))));
 };
 
-const buildRecord = async (isMember, { course, player, frame, lapNanos, outcome, previousRecord }) => {
-    const title = outcome === 'course_record' ? '🏆  New course record' : '🏁  New class record';
-    const details = [escapeMarkdown(mapName(course.dimension, course.server)), frameName(frame) && `class ${frameName(frame)}`];
+const RECORD_TITLES = { course: '🏆  New course record', class: '🏁  New class record', race: '🏆  New race record' };
+
+// previous: the board entry that held the record, if the bot had that board.
+const buildRecord = async (isMember, { course, scope, player, frame, nanos, laps, previous }) => {
+    const details = [
+        escapeMarkdown(mapName(course.dimension, course.server)),
+        scope === 'class' && frameName(frame) && `class ${frameName(frame)}`,
+        scope === 'race' && plural(laps, 'lap')
+    ];
+    const feat = scope === 'race' ? `finished ${plural(laps, 'lap')} in **${formatTime(nanos)}**` : `flew a **${formatTime(nanos)}** lap`;
 
     const container = new ContainerBuilder()
         .setAccentColor(COLORS.accent)
         .addTextDisplayComponents(
-            text(`### ${title} · ${courseTitle(course)}`),
+            text(`### ${RECORD_TITLES[scope]} · ${courseTitle(course)}`),
             text(`-# ${details.filter(Boolean).join(' · ')}`)
         )
         .addSeparatorComponents(new SeparatorBuilder())
-        .addTextDisplayComponents(text(`${await displayPlayer(isMember, player)} flew a **${formatTime(lapNanos)}** lap`));
+        .addTextDisplayComponents(text(`${await displayPlayer(isMember, player)} ${feat}`));
 
-    if (previousRecord) {
-        container.addTextDisplayComponents(text(`-# Previous: ${await displayPlayer(isMember, previousRecord)} · ${formatTime(previousRecord.nanos)} (−${formatTime(previousRecord.nanos - lapNanos)})`));
+    if (previous) {
+        container.addTextDisplayComponents(text(`-# Previous: ${await displayPlayer(isMember, previous.player)} · ${formatTime(previous.nanos)} (−${formatTime(previous.nanos - nanos)})`));
     }
 
     return payload(container);
 };
 
-const buildLeaderboard = async (isMember, course, frame) => {
-    const entries = store.topTimes(course, frame);
-    const lines = await Promise.all(entries.map(async (entry, i) => [
-        `${MEDALS[i] ?? `**${i + 1}.**`} ${await displayPlayer(isMember, entry)}`,
+// Propwash's board for the course: laps (one class or all) or races of a given length, clean or assisted times.
+const buildLeaderboard = async (isMember, course, { frame = null, laps = null, assisted = false } = {}) => {
+    const board = store.board(course, { kind: laps ? 'race' : 'lap', category: assisted ? 'assisted' : 'clean', frame: laps ? null : frame, laps });
+    const entries = board?.entries ?? [];
+    const lines = await Promise.all(entries.map(async (entry) => [
+        `${MEDALS[entry.rank - 1] ?? `**${entry.rank}.**`} ${await displayPlayer(isMember, entry.player)}`,
         `\`${formatTime(entry.nanos)}\``,
         frameName(entry.frame),
-        `<t:${Math.floor(entry.date / 1000)}:d>`
+        entry.assist.length && `⚠️ ${escapeMarkdown(entry.assist.join(', '))}`,
+        entry.otherRules && '⚙️',
+        entry.date && `<t:${Math.floor(entry.date / 1000)}:d>`
     ].filter(Boolean).join(' · ')));
 
-    return payload(new ContainerBuilder()
+    const details = [
+        escapeMarkdown(mapName(course.dimension, course.server)),
+        course.owner_name && `by ${escapeMarkdown(course.owner_name)}`,
+        `Layout ${course.layout}`,
+        laps ? `Race · ${plural(laps, 'lap')}` : frame ? `Class ${frameName(frame)}` : 'All classes',
+        assisted && 'Assisted'
+    ];
+    const container = new ContainerBuilder()
         .setAccentColor(COLORS.accent)
         .addTextDisplayComponents(
             text(`### 🏆  Leaderboard · ${courseTitle(course)}`),
-            text(`-# ${escapeMarkdown(mapName(course.dimension, course.server))} · Layout ${course.layout} · ${frame ? `Class ${frameName(frame)}` : 'All classes'}`)
+            text(`-# ${details.filter(Boolean).join(' · ')}`)
         )
         .addSeparatorComponents(new SeparatorBuilder())
-        .addTextDisplayComponents(text(lines.join('\n') || 'No lap times yet. Go fly!')));
+        .addTextDisplayComponents(text(lines.join('\n') || (laps ? 'No race times yet. Go race!' : 'No lap times yet. Go fly!')));
+    const footer = [
+        board && board.total > entries.length && `Top ${entries.length} of ${plural(board.total, 'pilot')}`,
+        entries.some((entry) => entry.otherRules) && '⚙️ flown under different server rules'
+    ].filter(Boolean).join(' · ');
+    if (footer) container.addTextDisplayComponents(text(`-# ${footer}`));
+    return payload(container);
 };
 
 module.exports = { formatTime, mapName, frameName, courseName, courseTitle, guildMembers, buildStatus, buildRaceResult, buildRecord, buildLeaderboard };

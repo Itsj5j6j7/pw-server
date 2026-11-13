@@ -31,7 +31,8 @@ final class Sender {
 	private static final int MAX_BATCH = 50;
 	private static final long MAX_BACKOFF_MS = 60_000;
 	/** Kept for as long as possible when the queue is full. */
-	private static final Set<String> PRIORITY = Set.of("race.best_lap");
+	private static final Set<String> PRIORITY = Set.of("race.record", "race.result");
+	private static final int SYNC_SECONDS = 30;
 
 	private record Event(String type, JsonObject json) {
 	}
@@ -58,8 +59,8 @@ final class Sender {
 		this.userAgent = "propwash-bridge/" + modVersion;
 	}
 
-	/** {@code heartbeat} runs every {@code heartbeatSeconds} on the sender thread. */
-	void start(JsonObject started, Runnable heartbeat) {
+	/** {@code heartbeat} runs every {@code heartbeatSeconds} on the sender thread, {@code sync} 5 s after startup and then every 30 s. */
+	void start(JsonObject started, Runnable heartbeat, Runnable sync) {
 		Event event = event("server.started", started);
 		thread.execute(() -> ping(event));
 		thread.scheduleAtFixedRate(() -> {
@@ -69,6 +70,7 @@ final class Sender {
 				LOGGER.error("Bridge heartbeat failed", e);
 			}
 		}, config.heartbeatSeconds(), config.heartbeatSeconds(), TimeUnit.SECONDS);
+		thread.scheduleAtFixedRate(sync, 5, SYNC_SECONDS, TimeUnit.SECONDS);
 		thread.scheduleWithFixedDelay(() -> {
 			// An exception here would cancel the schedule for good.
 			try {

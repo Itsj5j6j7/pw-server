@@ -4,22 +4,26 @@ const config = require('../config');
 
 // Shared by the bot and the API processes: WAL lets one write while the other reads, busy_timeout waits out the other's write.
 const db = new DatabaseSync(config.bridge.databasePath);
-db.exec(`
-    PRAGMA journal_mode = WAL;
-    PRAGMA busy_timeout = 5000;
+db.exec('PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;');
 
+// Version 1 (Propwash 0.6.0): courses by UUID and Propwash's boards instead of the bot's own laps table. The old race data
+// is dropped: Propwash still has every time and the bridge sends all boards again on startup.
+db.exec('BEGIN IMMEDIATE');
+if (db.prepare('PRAGMA user_version').get().user_version < 1) {
+    db.exec('DROP TABLE IF EXISTS courses; DROP TABLE IF EXISTS laps; DROP TABLE IF EXISTS races; PRAGMA user_version = 1;');
+}
+db.exec('COMMIT');
+
+db.exec(`
+    -- One row per course, keyed by Propwash's course UUID. boards: Propwash's own leaderboards of the current layout (course.board).
     CREATE TABLE IF NOT EXISTS courses (
-        server TEXT NOT NULL, id INTEGER NOT NULL, name TEXT NOT NULL, dimension TEXT NOT NULL,
-        layout INTEGER NOT NULL, laps INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+        server TEXT NOT NULL, id TEXT NOT NULL, number INTEGER NOT NULL, name TEXT NOT NULL, dimension TEXT NOT NULL,
+        layout INTEGER NOT NULL, laps INTEGER NOT NULL, mode TEXT NOT NULL, owner_name TEXT, boards TEXT NOT NULL DEFAULT '[]',
+        updated_at INTEGER NOT NULL,
         PRIMARY KEY (server, id)
     );
-    CREATE TABLE IF NOT EXISTS laps (
-        server TEXT NOT NULL, course_id INTEGER NOT NULL, layout INTEGER NOT NULL,
-        uuid TEXT NOT NULL, name TEXT NOT NULL, frame TEXT NOT NULL, nanos INTEGER NOT NULL, date INTEGER NOT NULL,
-        PRIMARY KEY (server, course_id, layout, uuid, frame)
-    );
     CREATE TABLE IF NOT EXISTS races (
-        server TEXT NOT NULL, heat_id TEXT NOT NULL, course_id INTEGER NOT NULL, layout INTEGER NOT NULL,
+        server TEXT NOT NULL, heat_id TEXT NOT NULL, course_id TEXT NOT NULL, layout INTEGER NOT NULL,
         multiplayer INTEGER NOT NULL, results TEXT NOT NULL, date INTEGER NOT NULL,
         PRIMARY KEY (server, heat_id)
     );
@@ -87,51 +91,34 @@ const getSetting = (key) => {
 const setSetting = (key, value) => db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, JSON.stringify(value));
 
 const getCourse = (server, id) => db.prepare('SELECT * FROM courses WHERE server = ? AND id = ?').get(server, id);
-const courses = () => db.prepare('SELECT * FROM courses ORDER BY server, id').all();
+const courses = () => db.prepare('SELECT server, id, number, name, dimension FROM courses ORDER BY server, number').all();
 
-// Autocomplete values are "server:id".
+// Autocomplete values are "server:uuid".
 const courseByRef = (ref) => {
     const [server, id] = String(ref).split(':');
-    return getCourse(server, Number(id));
+    return getCourse(server, id);
 };
 
-// Keeps the newest layout: a late event from an older layout doesn't move the course back.
-const upsertCourse = (server, { id, name, dimension, layout, laps }) => db.prepare(`
-    INSERT INTO courses (server, id, name, dimension, layout, laps, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT (server, id) DO UPDATE SET name = excluded.name, dimension = excluded.dimension, layout = excluded.layout,
-        laps = excluded.laps, updated_at = excluded.updated_at
-    WHERE excluded.layout >= courses.layout
-`).run(server, id, name, dimension, layout, laps, Date.now());
+// boards: undefined keeps the ones already stored (events other than course.board carry only the course).
+const upsertCourse = (server, { id, number, name, dimension, layout, laps, mode, ownerName }, boards) => db.prepare(`
+    INSERT INTO courses (server, id, number, name, dimension, layout, laps, mode, owner_name, boards, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT (server, id) DO UPDATE SET number = excluded.number, name = excluded.name, dimension = excluded.dimension,
+        layout = excluded.layout, laps = excluded.laps, mode = excluded.mode, owner_name = excluded.owner_name,
+        boards = CASE WHEN ? THEN excluded.boards ELSE courses.boards END, updated_at = excluded.updated_at
+`).run(server, id, number, name, dimension, layout, laps, mode, ownerName ?? null, JSON.stringify(boards ?? []), Date.now(), boards ? 1 : 0);
 
-// One entry per player and frame. Returns false when an equal or better time is already saved (a retried event).
-const submitLap = (server, course, player, frame, nanos, date) => db.prepare(`
-    INSERT INTO laps (server, course_id, layout, uuid, name, frame, nanos, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT (server, course_id, layout, uuid, frame) DO UPDATE SET name = excluded.name, nanos = excluded.nanos, date = excluded.date
-    WHERE excluded.nanos < laps.nanos
-`).run(server, course.id, course.layout, player.uuid, player.name, frame, nanos, date).changes > 0;
+// One of Propwash's boards: kind 'lap' (frame: one class, null: all) or 'race' (laps: the race length), category 'clean' or 'assisted'.
+const board = (course, { kind = 'lap', category = 'clean', frame = null, laps = null } = {}) => JSON.parse(course.boards)
+    .find((b) => b.kind === kind && b.category === category && (b.frame ?? null) === frame && (b.laps ?? null) === laps);
 
-// Best time of each player on the current layout, optionally for a single frame.
-// SQLite fills the bare columns of a MIN() aggregate from the row holding the minimum.
-const topTimes = (course, frame, limit = 10) => db.prepare(`
-    SELECT uuid, name, frame, MIN(nanos) AS nanos, date FROM laps
-    WHERE server = ? AND course_id = ? AND layout = ? AND (? IS NULL OR frame = ?)
-    GROUP BY uuid ORDER BY nanos, date LIMIT ?
-`).all(course.server, course.id, course.layout, frame ?? null, frame ?? null, limit);
+// Classes and race lengths with clean times, for the /leaderboard options.
+const frames = (course) => JSON.parse(course.boards).filter((b) => b.kind === 'lap' && b.category === 'clean' && b.frame).map((b) => b.frame);
+const raceLaps = (course) => [...new Set(JSON.parse(course.boards).filter((b) => b.kind === 'race').map((b) => b.laps))].sort((a, b) => a - b);
 
-const frames = (course) => db.prepare(`SELECT DISTINCT frame FROM laps WHERE server = ? AND course_id = ? AND layout = ? AND frame != ''`)
-    .all(course.server, course.id, course.layout).map((row) => row.frame);
+const removeCourse = (server, id) => db.prepare('DELETE FROM courses WHERE server = ? AND id = ?').run(server, id);
 
-const resetBoard = (server, courseId, playerName) => {
-    const course = getCourse(server, courseId);
-    if (!course) return;
-    db.prepare('DELETE FROM laps WHERE server = ? AND course_id = ? AND layout = ? AND (? IS NULL OR lower(name) = lower(?))')
-        .run(server, course.id, course.layout, playerName ?? null, playerName ?? null);
-};
-
-const removeCourse = (server, courseId) => {
-    db.prepare('DELETE FROM laps WHERE server = ? AND course_id = ?').run(server, courseId);
-    db.prepare('DELETE FROM courses WHERE server = ? AND id = ?').run(server, courseId);
-};
+// courses.sync: drops this server's courses Propwash doesn't have any more.
+const syncCourses = (server, ids) => db.prepare('DELETE FROM courses WHERE server = ? AND id NOT IN (SELECT value FROM json_each(?))').run(server, JSON.stringify(ids)).changes;
 
 // Returns false if that heat was already saved, so it isn't posted twice.
 const saveRace = (server, { heatId, course, multiplayer, results }, date) => db.prepare(`
@@ -141,7 +128,7 @@ const saveRace = (server, { heatId, course, multiplayer, results }, date) => db.
 // Deletes every course, leaderboard and race, and the account links too if asked. Returns how many courses were removed.
 const wipe = (links) => {
     const count = db.prepare('SELECT COUNT(*) AS count FROM courses').get().count;
-    db.exec(`DELETE FROM courses; DELETE FROM laps; DELETE FROM races;${links ? ' DELETE FROM links; DELETE FROM link_codes;' : ''}`);
+    db.exec(`DELETE FROM courses; DELETE FROM races;${links ? ' DELETE FROM links; DELETE FROM link_codes;' : ''}`);
     return count;
 };
 
@@ -150,9 +137,6 @@ const getLink = (uuid) => db.prepare('SELECT discord_id AS discordId, mc_name AS
 const links = () => db.prepare('SELECT uuid, mc_name AS mcName FROM links').all();
 
 const getLinkByDiscord = (discordId) => db.prepare('SELECT uuid, mc_name AS mcName FROM links WHERE discord_id = ?').get(discordId);
-
-// uuid of the player that last flew under that name (the mod sends only the name of a beaten record).
-const uuidByName = (name) => db.prepare('SELECT uuid FROM laps WHERE lower(name) = lower(?) ORDER BY date DESC LIMIT 1').get(name)?.uuid;
 
 // Returns the unlinked uuid, or undefined.
 const unlink = (discordId) => db.prepare('DELETE FROM links WHERE discord_id = ? RETURNING uuid').get(discordId)?.uuid;
@@ -184,8 +168,8 @@ const useCode = (code) => {
 };
 
 module.exports = {
-    getSetting, setSetting, getCourse, courses, courseByRef, upsertCourse, submitLap, topTimes, frames, resetBoard, removeCourse,
-    saveRace, wipe, getLink, getLinkByDiscord, links, uuidByName, link, unlink, createCode, useCode,
+    getSetting, setSetting, getCourse, courses, courseByRef, upsertCourse, board, frames, raceLaps, removeCourse, syncCourses,
+    saveRace, wipe, getLink, getLinkByDiscord, links, link, unlink, createCode, useCode,
     markSupporter, unmarkSupporter, supporterUuids, markRank, unmarkRank, rankUuids,
     supporterTime, supporterTimes, setSupporterTime, removeSupporterTime, addSupporterMonths,
     addKofiPayment, unpostedKofiPayments, markKofiPaymentPosted,

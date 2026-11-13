@@ -7,9 +7,9 @@ test('a pet gives its pet permission', () => {
         ['lp user u1 permission set propwash.pets.dragon']);
 });
 
-test('a trail gives its preset and the use permission', () => {
+test('a trail gives its preset only (use stays with the supporter group)', () => {
     assert.deepEqual(itemCommands({ kind: 'trail', preset: 'aurora' }, 'u1'),
-        ['lp user u1 permission set propwash.trails.preset.aurora', 'lp user u1 permission set propwash.trails.use']);
+        ['lp user u1 permission set propwash.trails.preset.aurora']);
 });
 
 test('a trail without a preset name uses its item name', () => {

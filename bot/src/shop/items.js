@@ -1,10 +1,12 @@
 // Pure helpers for Ko-fi shop orders (no database, no RCON), so they can be tested on their own.
 
-// The LuckPerms commands that give one catalogue item to a Minecraft account.
+// The LuckPerms commands that give one catalogue item to a Minecraft account. Only the item itself: using
+// pets and trails still needs the supporter group (propwash.pets.use, propwash.trails.use), so a buyer who
+// loses supporter sees them greyed out until they resubscribe.
 const itemCommands = (item, uuid) => {
     const perms = item.kind === 'pet'
         ? [`propwash.pets.${item.name}`]
-        : [`propwash.trails.preset.${item.preset ?? item.name}`, 'propwash.trails.use'];
+        : [`propwash.trails.preset.${item.preset ?? item.name}`];
     return perms.map((perm) => `lp user ${uuid} permission set ${perm}`);
 };
 

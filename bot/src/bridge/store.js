@@ -41,6 +41,11 @@ db.exec(`
         id TEXT PRIMARY KEY, discord_id TEXT, name TEXT NOT NULL, amount TEXT NOT NULL, currency TEXT NOT NULL,
         type TEXT NOT NULL, months INTEGER NOT NULL, message TEXT, at INTEGER NOT NULL, posted INTEGER NOT NULL DEFAULT 0
     );
+    -- Ko-fi shop orders (pets and trails, utils/Shop): the items as sent, granted once; posted: shown to staff once.
+    CREATE TABLE IF NOT EXISTS shop_orders (
+        id TEXT PRIMARY KEY, discord_id TEXT, name TEXT NOT NULL, items TEXT NOT NULL, at INTEGER NOT NULL,
+        done INTEGER NOT NULL DEFAULT 0, posted INTEGER NOT NULL DEFAULT 0
+    );
 `);
 
 const markSupporter = (uuid) => db.prepare('INSERT OR IGNORE INTO supporter_ranks (uuid, given_at) VALUES (?, ?)').run(uuid, Date.now());
@@ -67,6 +72,13 @@ const addKofiPayment = (p) => db.prepare(`INSERT OR IGNORE INTO kofi_payments (i
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(p.id, p.discordId ?? null, p.name, p.amount, p.currency, p.type, p.months, p.message ?? null, Date.now()).changes > 0;
 const unpostedKofiPayments = () => db.prepare('SELECT id, discord_id AS discordId, name, amount, currency, type, months, message FROM kofi_payments WHERE posted = 0 ORDER BY at').all();
 const markKofiPaymentPosted = (id) => db.prepare('UPDATE kofi_payments SET posted = 1 WHERE id = ?').run(id);
+// Shop orders: items is the JSON of the order's lines ({code, known}); done once they're all given.
+const addShopOrder = (o) => db.prepare('INSERT OR IGNORE INTO shop_orders (id, discord_id, name, items, at) VALUES (?, ?, ?, ?, ?)')
+    .run(o.id, o.discordId, o.name, JSON.stringify(o.items), Date.now()).changes > 0;
+const pendingShopOrders = () => db.prepare('SELECT id, discord_id AS discordId, name, items, posted FROM shop_orders WHERE done = 0 ORDER BY at')
+    .all().map((row) => ({ ...row, items: JSON.parse(row.items) }));
+const markShopOrderDone = (id) => db.prepare('UPDATE shop_orders SET done = 1 WHERE id = ?').run(id);
+const markShopOrderPosted = (id) => db.prepare('UPDATE shop_orders SET posted = 1 WHERE id = ?').run(id);
 
 const getSetting = (key) => {
     const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
@@ -176,5 +188,6 @@ module.exports = {
     saveRace, wipe, getLink, getLinkByDiscord, links, uuidByName, link, unlink, createCode, useCode,
     markSupporter, unmarkSupporter, supporterUuids, markRank, unmarkRank, rankUuids,
     supporterTime, supporterTimes, setSupporterTime, removeSupporterTime, addSupporterMonths,
-    addKofiPayment, unpostedKofiPayments, markKofiPaymentPosted
+    addKofiPayment, unpostedKofiPayments, markKofiPaymentPosted,
+    addShopOrder, pendingShopOrders, markShopOrderDone, markShopOrderPosted
 };

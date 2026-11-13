@@ -51,6 +51,7 @@ const postPayments = async (client) => {
         const result = p.discordId && p.months > 0
             ? `+${p.months} month${p.months === 1 ? '' : 's'}, supporter until <t:${Math.floor(until / 1000)}:D>`
             : p.months > 0 ? `worth ${p.months} month${p.months === 1 ? '' : 's'}: give it with \`/supporter add\``
+                : p.type === 'Shop Order' ? 'shop order (pets and trails, never supporter time)'
                 : `no supporter time (under ${config.supporter.eurosPerMonth ?? 5} EUR, another currency or not a donation): \`/supporter add\` if it should count`;
         // Every line of the message quoted, so a line break can't start a line that looks like the bot's.
         const message = p.message ? '\n' + p.message.split(/\r?\n/).map((line) => `> ${plain(line)}`).join('\n') : '';

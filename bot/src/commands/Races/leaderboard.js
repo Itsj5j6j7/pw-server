@@ -1,4 +1,4 @@
-const { ChatInputCommandInteraction, ApplicationCommandOptionType } = require("discord.js");
+const { ChatInputCommandInteraction, ApplicationCommandOptionType, MessageFlags } = require("discord.js");
 const DiscordBot = require("../../client/DiscordBot");
 const ApplicationCommand = require("../../structure/ApplicationCommand");
 const config = require("../../config");
@@ -32,10 +32,11 @@ module.exports = new ApplicationCommand({
         const course = store.courseByRef(interaction.options.getString('course'));
         if (!course) return interaction.reply(notice(config.emojis.no, 'Unknown course, pick one from the list.'));
 
-        await interaction.reply(await buildLeaderboard(guildMembers(interaction.guild), course, {
+        const board = await buildLeaderboard(guildMembers(interaction.guild), course, {
             frame: interaction.options.getString('class'),
             laps: interaction.options.getInteger('race'),
             assisted: interaction.options.getBoolean('assisted') ?? false
-        }));
+        });
+        await interaction.reply({ ...board, flags: board.flags | MessageFlags.Ephemeral });
     }
 }).toJSON();

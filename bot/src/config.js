@@ -66,6 +66,7 @@ const config = {
             'minecraft:overworld': 'Overworld'
         },
         frames: {}, // Drone class -> display name, optional.
+        mentionWithName: true, // Linked players (/link) show as their Discord mention; true adds their Minecraft name after it: "@Tofu (Tofu_MC)".
         statusPlayerNames: true, // Status message: true lists the players of each map, false only shows how many there are.
         raceLog: { includeSolo: false }, // Also post races with a single pilot.
         heartbeat: { offlineAfterSeconds: 90, statusEditSeconds: 60 },

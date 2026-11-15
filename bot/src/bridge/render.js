@@ -39,10 +39,10 @@ const courseTitle = (course) => (servers.multi ? `${escapeMarkdown(servers.get(c
 // isMember(discordId) -> Promise<boolean>, so this works with a guild (bot) and with the REST API (bridge API).
 const guildMembers = (guild) => (id) => guild.members.fetch(id).then(() => true, () => false);
 
-// Mention (shown, never pinged) when the player is linked and still in the server.
+// Mention (shown, never pinged) when the player is linked and still in the server, followed by the Minecraft name if bridge.mentionWithName.
 const displayPlayer = async (isMember, { uuid, name }) => {
     const link = store.getLink(uuid);
-    if (link && await isMember(link.discordId)) return `<@${link.discordId}>`;
+    if (link && await isMember(link.discordId)) return `<@${link.discordId}>` + (config.bridge.mentionWithName ? ` (${escapeMarkdown(name)})` : '');
     return escapeMarkdown(name);
 };
 

@@ -8,6 +8,7 @@ module.exports = new Event({
     run: async (client, message) => {
         if (message.author.bot || !config.faq.channels.includes(message.channelId)) return;
         if (client.database.has('faq-disabled')) return;
+        if (message.member?.roles.cache.hasAny(...config.jobs.adminRoles)) return;
         if (!looksLikeQuestion(message.content)) return;
 
         const isOther = (user) => user && user.id !== client.user.id && user.id !== message.author.id;

@@ -25,10 +25,9 @@ const looksLikeQuestion = (text) => {
 
 /**
  * @param {string} text
- * @param {boolean} toUser whether the message replies to or mentions another user.
  * @returns {Promise<string | null>} the FAQ answer, or null when none applies.
  */
-const findAnswer = async (text, toUser) => {
+const findAnswer = async (text) => {
     const res = await fetch('https://api.typesafe.ai/v1/systemone', {
         method: 'POST',
         headers: {
@@ -37,14 +36,14 @@ const findAnswer = async (text, toUser) => {
         },
         body: JSON.stringify({
             model: 'jev-latest',
-            state: { message: text.slice(0, MAX_STATE_CHARS), replying_to_or_mentioning_another_user: toUser },
+            state: { message: text.slice(0, MAX_STATE_CHARS) },
             questions: {
                 seeks_help: {
                     type: 'noul',
                     instructions: 'Is the author of `message` asking for help or information for themselves, rather than asking another person about that person\'s own setup, choices or experience?',
                     criteria: {
                         true: 'Wants to know how to do something, or whether something exists or works',
-                        false: 'Asks someone what they use, prefer or did, or is just chatting'
+                        false: 'Asks someone what they use, prefer or did, asks someone to share logs, screenshots or details, asks a follow-up about their problem, or is just chatting'
                     }
                 },
                 faq: {

@@ -10,8 +10,10 @@ module.exports = new Event({
         if (client.database.has('faq-disabled')) return;
         if (!looksLikeQuestion(message.content)) return;
 
-        const toUser = Boolean(message.reference) || message.mentions.users.some((user) => user.id !== client.user.id);
-        const answer = await findAnswer(message.content, toUser).catch((err) => error(err));
+        const isOther = (user) => user && user.id !== client.user.id && user.id !== message.author.id;
+        if (isOther(message.mentions.repliedUser) || message.mentions.users.some(isOther)) return;
+
+        const answer = await findAnswer(message.content).catch((err) => error(err));
         if (answer) await message.reply(answer);
     }
 }).toJSON();

@@ -51,6 +51,17 @@ const config = {
                 keyEnv: 'BRIDGE_KEY_PLOTS',
                 maps: { 'fabricplots:plots': 'Plots' }
             },
+            minigames: {
+                name: 'Minigames',
+                keyEnv: 'BRIDGE_KEY_MINIGAMES',
+                maps: {
+                    'maps:lobby': 'Lobby',
+                    'maps:mosslorn': 'Hide and Seek',
+                    'maps:battle_royale': 'Battle Royale',
+                    'minigames:runner': 'Mosslorn Run',
+                    'minigames:runner_laminar': 'Laminar Run'
+                }
+            },
             hub: {
                 name: 'Hub',
                 keyEnv: 'BRIDGE_KEY_HUB',

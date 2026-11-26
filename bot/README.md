@@ -27,7 +27,7 @@ cp .env.example .env
 
 Fill in:
 
-- `.env`: `CLIENT_TOKEN`, `TYPESAFE_API_KEY` (FAQ answers), and one API key per Minecraft server (`BRIDGE_KEY_FREESTYLE`, `BRIDGE_KEY_RACES`, `BRIDGE_KEY_PLOTS`, `BRIDGE_KEY_HUB`; generate each with `openssl rand -hex 32`). With a single server, use `BRIDGE_API_KEY` and leave `bridge.servers` empty.
+- `.env`: `CLIENT_TOKEN`, `TYPESAFE_API_KEY` (FAQ answers), and one API key per Minecraft server (`BRIDGE_KEY_FREESTYLE`, `BRIDGE_KEY_RACES`, `BRIDGE_KEY_PLOTS`, `BRIDGE_KEY_MINIGAMES`, `BRIDGE_KEY_HUB`; generate each with `openssl rand -hex 32`). With a single server, use `BRIDGE_API_KEY` and leave `bridge.servers` empty.
 - `src/config.js`: channel, role and category IDs; the `bridge` block (port, servers, channels). Versioned: edit it and commit, it holds no secrets (API keys stay in `.env`). Every field is commented in the file.
 
 `.env` is gitignored. Never commit it.

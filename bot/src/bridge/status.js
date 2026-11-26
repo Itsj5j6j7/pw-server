@@ -33,7 +33,12 @@ const updateMessage = () => enqueue(async () => {
 
     if (saved) {
         if (rendered === lastRendered) return;
-        if (await edit(saved.channelId, saved.messageId, message).then(() => true, () => false)) return lastRendered = rendered;
+        // Only a deleted message (10008) is replaced; any other failure (network, rate limit) is retried on the next tick.
+        const edited = await edit(saved.channelId, saved.messageId, message).then(() => true, (err) => {
+            if (err.code === 10008) return false;
+            throw err;
+        });
+        if (edited) return lastRendered = rendered;
     }
 
     const sent = await send(channelId, message);
@@ -48,8 +53,8 @@ const updateChannelName = () => {
 
     const name = [...states.values()].some((state) => state.online) ? '🟢│status' : '🔴│status';
     if (name === lastName) return;
-    lastName = name;
-    rename(config.bridge.channels.status, name).catch(console.error);
+    // lastName is only set once Discord accepted it, so a failed rename is retried on the next tick instead of leaving the wrong colour.
+    rename(config.bridge.channels.status, name).then(() => lastName = name, console.error);
 };
 
 const setOnline = (state, online) => {
@@ -81,14 +86,23 @@ const stopping = (server) => setOnline(states.get(server.id), false);
 
 const watch = () => {
     // A crash can't be reported by the mod: it shows up as missing heartbeats.
+    let lastTick = Date.now();
     setInterval(() => {
+        // If this process was frozen, the heartbeats received meanwhile haven't been processed yet: don't take the silence for a crash.
+        const late = Date.now() - lastTick > 30000;
+        lastTick = Date.now();
+        if (late) return;
+
         for (const state of states.values()) {
             if (state.online !== false && Date.now() - state.lastBeat > config.bridge.heartbeat.offlineAfterSeconds * 1000) setOnline(state, false);
         }
     }, 15000);
 
     setInterval(() => {
-        if ([...states.values()].some((state) => state.online !== null)) updateMessage();
+        if ([...states.values()].some((state) => state.online !== null)) {
+            updateChannelName();
+            updateMessage();
+        }
     }, config.bridge.heartbeat.statusEditSeconds * 1000);
 };
 
